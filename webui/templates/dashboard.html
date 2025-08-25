@@ -166,12 +166,14 @@
             <div class="card-body text-center">
                 <p class="text-muted mb-1">마지막 업데이트: <span id="last-updated">-</span></p>
                 <div class="d-flex justify-content-center gap-3">
+                    {# 시뮬레이션과 생산 체인 기능 비활성화
                     <a href="{{ url_for('simulation_page') }}" class="btn btn-outline-primary">
                         <i class="fas fa-play me-1"></i>고급 시뮬레이션
                     </a>
                     <a href="{{ url_for('production_page') }}" class="btn btn-outline-info">
                         <i class="fas fa-industry me-1"></i>생산 체인 분석
                     </a>
+                    #}
                     <a href="{{ url_for('data_page') }}" class="btn btn-outline-success">
                         <i class="fas fa-database me-1"></i>데이터 탐색
                     </a>
