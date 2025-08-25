@@ -1,4 +1,4 @@
-![Good artists copy, great artists steal - Pablo Picasso](https://i.imgur.com/8XvH9kM.png)
+![Good artists copy, great artists steal - Pablo Picasso](./ca7de3f42d939a1f0eb6f7b169baa2c4.jpg)
 
 # 🚜 SungDaeDay - 헤이데이 동적 밸런싱 시뮬레이터
 
