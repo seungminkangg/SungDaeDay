@@ -1,0 +1,55 @@
+,,,,창고 탭 분류 기준,,,해금 마을 레벨,,순환 참조로 인해 반복 계산 사용,"동물 스킬 외에 연구소, 마을 버프 등에서도 ProductivityValue 값 증가시킬 수 있음",1.없을 떄 몇 캐시 주고 바로 살 수 있는지 2.남은 시간을 즉시 완료 하는 비용과 다름,창고에 판매 시 획득 코인량,시장(딜러)에게서 구매 시 비용,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Id,CraftGroupId,RewardGroupId,#Name,ItemCategory,BuildingType,IsRushEligible,UnlockLevel,CraftTime,#Score,CraftTimeMethod,CashCost,SellingCoin,#BuyingCoin,CancelCoinCost,CancelCashCost,IconKey,#Score,#TimeScore,#Coeff0,#Coeff1,#Coeff2,#Coeff3,#Coeff4,#SumLayerMultiplier,#SumIngredientScores,#Ingr1,#Ingr2,#Ingr3,#Ingr4,#Score1,#Score2,#Score3,#Score4,#Count1,#Count2,#Count3,#Count4,#IngrScore1,#IngrScore2,#IngrScore3,#IngrScore4,#Layer1,#Layer2,#Layer3,#Layer4
+string,string,string,#string,enum:ItemCategory,enum:BuildingType,bool,int,int,float,string,int,int,,int,int,string,float,float,,,,,,float,float,string,string,string,string,float,float,float,float,int,int,int,int,float,float,float,float,float,float,float,float
+Coin,Coin,Coin,금화,All,None,0,1,0,,,1,1,,1,1,icon_coin,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Exp,Exp,Exp,경험치,Currency,None,0,1,0,,,0,0,,0,0,Icon_Exp,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Cash,Cash,Cash,동물달러,Currency,None,0,1,0,,,1,100,,100,1,icon_cash,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+GiftCoupon,GiftCoupon,Cash,선물쿠폰,Currency,None,0,1,0,,,10,100,,100,10,icon_giftcoupon,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+DeliveryCoupon,DeliveryCoupon,Cash,납품 쿠폰,Currency,None,0,1,0,,,10,100,,100,10,icon_giftcoupon,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Jewl1,Jewl1,Cash,보석1,Currency,None,0,1,0,,,10,100,,100,10,icon_jewl_1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Jewl2,Jewl2,Cash,보석2,Currency,None,0,1,0,,,20,200,,200,20,icon_jewl_2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Jewl3,Jewl3,Cash,보석3,Currency,None,0,1,0,,,30,300,,300,30,icon_jewl_3,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Hammer,Hammer,Hammer,망치,Material,None,0,1,0,,,1,10,,10,1,icon_hammer,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Nails,Nails,Nails,못,Material,None,0,1,0,,,1,10,,10,1,icon_nails,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+PaintBucket,PaintBucket,PaintBucket,페인트,Material,None,0,1,0,,,1,10,,10,1,icon_paintbucket,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Bricks,Bricks,Bricks,벽돌,Material,None,0,1,0,,,8,10,,10,8,icon_bricks,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Glass,Glass,Glass,유리,Material,None,0,1,0,,,8,10,,10,8,icon_glass,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+WoodPlank,WoodPlank,WoodPlank,나무판,Material,None,0,1,0,,,8,10,,10,8,icon_woodplank,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Shovel,Shovel,Shovel,삽,Material,None,0,1,0,,,8,10,,10,8,icon_shovel,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Axe,Axe,Axe,삽,Material,None,0,1,0,,,8,10,,10,8,icon_axe,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Saw,Saw,Saw,삽,Material,None,0,1,0,,,8,10,,10,8,icon_saw,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+AnimalInvite,AnimalInvite,AnimalInvite,동물초대장,Material,None,0,1,0,,,40,400,,400,40,icon_animalinvite,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+AnimalInvite2,AnimalInvite2,AnimalInvite2,동물초대장,Material,None,0,1,0,,,80,800,,800,80,icon_animalinvite2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+AnimalInvite3,AnimalInvite3,AnimalInvite3,동물초대장,Material,None,0,1,0,,,120,1200,,1200,120,icon_animalinvite3,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+RareCandy,RareCandy,RareCandy,희귀사탕,Material,None,0,1,0,,,20,10,,10,20,icon_rarecandy,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+HourGlass,HourGlass,HourGlass,모래시계,Material,None,0,1,0,,,10,10,,10,10,icon_hourglass,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Wheat,Wheat,Wheat,밀,Crops,Field,1,1,15,,15 / ProductivityValue + 100) / 100,1,1,,1,1,icon_wheat,1,1,0,1,0,0,0,1,0,Coin,,,,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Corn,Corn,Corn,옥수수,Crops,Field,1,3,30,2.0,30 / ProductivityValue + 100) / 100,2,2,,2,2,icon_corn,2,2,0,2,0,0,0,1,0,Coin,,,,,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0
+Carrot,Carrot,Carrot,당근,Crops,Field,1,4,45,3.0,45 / ProductivityValue + 100) / 100,3,3,,3,3,icon_carrot,3,3,0,3,0,0,0,1,0,Coin,,,,,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0
+Cotton,Cotton,Cotton,목화,Crops,Field,0,8,60,4.0,60 / ProductivityValue + 100) / 100,4,4,,4,4,icon_cotton,4,4,0,4,0,0,0,1,0,Coin,,,,,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0
+Tomato,Tomato,Tomato,토마토,Crops,Field,0,9,90,6.0,90 / ProductivityValue + 100) / 100,6,6,,6,6,icon_tomato,6,6,0,6,0,0,0,1,0,Coin,,,,,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0
+Milk,Milk,Milk,우유,Food,Cowshed,1,1,60,7.7,60 / ProductivityValue + 100) / 100,4,4,,4,4,icon_milk,7.666666667,4,0,4,0,0,0,1,3.666666667,CowFeed,,,,3.666666667,0,0,0,1,0,0,0,3.666666667,0,0,0,0,0,0,0
+Egg,Egg,Egg,달걀,Food,ChickenCoop,1,4,120,12.7,120 / ProductivityValue + 100) / 100,6,6,,6,6,icon_egg,12.66666667,8,0,8,0,0,0,1,4.666666667,ChickenFeed,,,,4.666666667,0,0,0,1,0,0,0,4.666666667,0,0,0,0,0,0,0
+Wool,Wool,Wool,양털,Food,SheepFarm,0,8,180,17.7,180 / ProductivityValue + 100) / 100,8,8,,8,8,icon_wool,17.66666667,12,0,12,0,0,0,1,5.666666667,SheepFeed,,,,5.666666667,0,0,0,1,0,0,0,5.666666667,0,0,0,0,0,0,0
+Bacon,Bacon,Bacon,베이컨,Food,PigFarm,0,10,240,22.7,240 / ProductivityValue + 100) / 100,10,10,,10,10,icon_bacon,22.66666667,16,0,16,0,0,0,1,6.666666667,PigFeed,,,,6.666666667,0,0,0,1,0,0,0,6.666666667,0,0,0,0,0,0,0
+CowFeed,CowFeed,CowFeed,소사료,Food,FeedMill,1,4,10,3.7,10 / ProductivityValue + 100) / 100,2,2,,2,2,icon_feed_cow,3.666666667,0.6666666667,0,0.6666666667,0,0,0,1,3,Wheat,Corn,,,1,2,0,0,1,1,0,0,1,2,0,0,0,0,0,0
+ChickenFeed,ChickenFeed,ChickenFeed,닭사료,Food,FeedMill,1,4,10,4.7,10 / ProductivityValue + 100) / 100,3,3,,3,3,icon_feed_chicken,4.666666667,0.6666666667,0,0.6666666667,0,0,0,1,4,Wheat,Carrot,,,1,3,0,0,1,1,0,0,1,3,0,0,0,0,0,0
+SheepFeed,SheepFeed,SheepFeed,양사료,Food,FeedMill,0,8,10,5.7,10 / ProductivityValue + 100) / 100,4,4,,4,4,icon_feed_sheep,5.666666667,0.6666666667,0,0.6666666667,0,0,0,1,5,Corn,Carrot,,,2,3,0,0,1,1,0,0,2,3,0,0,0,0,0,0
+PigFeed,PigFeed,PigFeed,돼지사료,Food,FeedMill,0,9,10,6.7,10 / ProductivityValue + 100) / 100,5,5,,5,5,icon_feed_pig,6.666666667,0.6666666667,0,0.6666666667,0,0,0,1,6,Wheat,Corn,Carrot,,1,2,3,0,1,1,1,0,1,2,3,0,0,0,0,0
+Bread,Bread,Bread,빵,Food,Bakery,1,1,15,3.0,15 / ProductivityValue + 100) / 100,3,3,,3,3,icon_bread,3,1,0,1,0,0,0,1,2,Wheat,,,,1,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0
+Cookie,Cookie,Cookie,쿠키,Food,Bakery,1,4,30,29.5,30 / ProductivityValue + 100) / 100,14,14,,14,14,icon_cookie,29.53333333,2,0,2,0,0,0,1.1,27.33333333,Wheat,Egg,,,1,12.66666667,0,0,2,2,0,0,2,25.33333333,0,0,0,0.1,0,0
+Cream,Cream,Cream,크림,Food,DairyShop,1,5,15,16.3,15 / ProductivityValue + 100) / 100,4,4,,4,4,icon_cream,16.33333333,1,0,1,0,0,0,1,15.33333333,Milk,,,,7.666666667,0,0,0,2,0,0,0,15.33333333,0,0,0,0,0,0,0
+Cheese,Cheese,Cheese,치즈,Food,DairyShop,1,5,30,32.9,30 / ProductivityValue + 100) / 100,8,8,,8,8,icon_cheese,32.86666667,2,0,2,0,0,0,1.1,30.66666667,Milk,,,,7.666666667,0,0,0,4,0,0,0,30.66666667,0,0,0,0.1,0,0,0
+CarrotSoup,CarrotSoup,CarrotSoup,수프,Food,SoupShop,1,6,60,34.3,60 / ProductivityValue + 100) / 100,27,27,,27,27,icon_carrot_soup,34.33333333,4,0,4,0,0,0,1,30.33333333,Wheat,Carrot,Cream,,1,3,16.33333333,0,5,3,1,0,5,9,16.33333333,0,0,0,0,0
+CornSoup,CornSoup,CornSoup,콘 수프,Food,SoupShop,0,8,120,39.3,120 / ProductivityValue + 100) / 100,10,11,,11,10,icon_corn_soup,39.33333333,8,0,8,0,0,0,1,31.33333333,Wheat,Corn,Cream,,1,2,16.33333333,0,5,5,1,0,5,10,16.33333333,0,0,0,0,0
+TomatoSoup,TomatoSoup,TomatoSoup,토마토 수프,Food,SoupShop,0,9,180,51.3,180 / ProductivityValue + 100) / 100,10,11,,11,10,icon_tomato_soup,51.33333333,12,0,12,0,0,0,1,39.33333333,Wheat,Tomato,Cream,,1,6,16.33333333,0,5,3,1,0,5,18,16.33333333,0,0,0,0,0
+CottonFabric,CottonFabric,CottonFabric,옷감,Food,TextileMill,0,8,30,10.0,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_cotton_fabric,10,2,0,2,0,0,0,1,8,Cotton,,,,4,0,0,0,2,0,0,0,8,0,0,0,0,0,0,0
+Yarm,Yarm,Yarm,실,Food,TextileMill,0,8,60,39.7,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_yarn,39.73333333,4,0,4,0,0,0,1.1,35.33333333,Wool,,,,17.66666667,0,0,0,2,0,0,0,35.33333333,0,0,0,0.1,0,0,0
+Shirt,Shirt,Shirt,셔츠,Food,TailorShop,0,8,90,16.0,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_shirt,16,6,0,6,0,0,0,1,10,CottonFabric,,,,10,0,0,0,1,0,0,0,10,0,0,0,0,0,0,0
+Sweater,Sweater,Sweater,스웨터,Food,TailorShop,0,8,180,52.9,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_sweater,52.93333333,12,0,12,0,0,0,1.1,39.73333333,Yarm,,,,39.73333333,0,0,0,1,0,0,0,39.73333333,0,0,0,0.1,0,0,0
+Coat,Coat,Coat,코트,Food,TailorShop,0,8,300,72.6,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_coat,72.61751333,20.8038,12.1608,9.1205,-0.4775,0,0,1.1,49.73333333,CottonFabric,Yarm,,,10,39.73333333,0,0,1,1,0,0,10,39.73333333,0,0,0,0.1,0,0
+BaconEgg,BaconEgg,BaconEgg,베이컨 앤 에그,Food,Restaurant,0,9,60,75.5,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_bacon_egg,75.46666667,4,0,4,0,0,0,1.2,70.66666667,Bacon,Egg,,,22.66666667,12.66666667,0,0,2,2,0,0,45.33333333,25.33333333,0,0,0.1,0.1,0,0
+Hamburger,Hamburger,Hamburger,햄버거,Food,Restaurant,0,9,120,93.8,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_hamburger,93.8,8,0,8,0,0,0,1.2,84.2,Bread,Bacon,Cheese,,3,22.66666667,32.86666667,0,2,2,1,0,6,45.33333333,32.86666667,0,0,0.1,0.1,0
+Orange,Orange,Orange,오륀지,Food,OrangeTree,0,9999,240,21.0,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_orange,21,16,0,16,0,0,0,1,5,Fertilizer,,,,5,0,0,0,1,0,0,0,5,0,0,0,0,0,0,0
+Fertilizer,Fertilizer,Fertilizer,똥,Food,FertilizerMill,0,10,30,5.0,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_fert_orange,5,2,0,2,0,0,0,1,3,Wheat,Corn,,,1,2,0,0,1,1,0,0,1,2,0,0,0,0,0,0
+OrangeJuice,OrangeJuice,OrangeJuice,오륀지쥬스,Food,JuiceShop,0,9999,90,48.6,10 / ProductivityValue + 100) / 100,10,11,,11,10,icon_orangejuice,48.6,6,0,6,0,0,0,1.1,42,Orange,,,,21,0,0,0,2,0,0,0,42,0,0,0,0.1,0,0,0

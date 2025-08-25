@@ -1,0 +1,20 @@
+,,다른 시트와 다르게 범위 중복됨,,비었으면 계층 제한 없음,고정된 수량 요구,요구 스코어 범위,요구 스코어 범위,납품 패턴 선정 가중치,,기차의 경우 몇칸으로 나눠질 지 정의 (나누기 후 버림 처리)
+Id,DeliveryType,MinLevel,MaxLevel,LayerList,FixedAmountList,MinAmountList,MaxAmountList,Weight,#DifficultyType (Todo),SplitCount
+int,enum:DeliveryType,int,int,string[],int[],float[],float[],int,enum:value:DeliveryPatternDifficultyType,int[]
+1,Truck,1,9999,,1,,,10,VeryEasy,
+2,Truck,1,9999,,1 / 1,,,8,VeryEasy,
+3,Truck,1,9999,,1 / 1 / 1,,,2,Easy,
+4,Truck,8,9999,,1 / 1 / 1 / 1,,,5,Easy,
+5,Truck,8,9999,,1 / 1 / 1 / 1 / 1,,,5,Normal,
+6,Truck,8,9999,,1 / 1 / 1 / 1 / 1 / 1,,,5,Normal,
+7,Truck,1,9999,,,50,100,5,VeryEasy,
+8,Truck,1,9999,,,25 / 25,50 / 50,5,VeryEasy,
+9,Truck,1,9999,,,10 / 10 / 10,20 / 20 / 20,5,Easy,
+10,Truck,14,9999,Crops,,1,10,10,Normal,
+11,Train,1,9999,,1,,,10,VeryEasy,2
+12,Train,1,9999,,1 / 1,,,8,VeryEasy,1 / 1
+13,Train,1,9999,,1 / 1 / 1,,,2,Easy,1 / 2 / 1
+14,Train,1,9999,,,50,100,5,VeryEasy,2
+15,Train,1,9999,,,25 / 25,50 / 50,5,VeryEasy,2 / 1
+16,Train,1,9999,,,10 / 10 / 10,20 / 20 / 20,5,Easy,2 / 2 / 1
+17,Train,14,9999,Crops,,1,10,10,Normal,1

@@ -1,0 +1,9 @@
+,,적용 어려움 지수 범위,적용 어려움 지수 범위,,,,,
+Id,DeliveryType,MinStruggleScore,MaxStruggleScore,VeryEasy,Easy,Normal,Hard,VeryHard
+int,enum:DeliveryType,int,int,float,float,float,float,float
+1,Truck,0,30,1,1,1,1,1
+2,Truck,31,60,1.5,1,1,0,0
+3,Truck,61,100,2,1,0,0,0
+1,Train,0,30,1,1,1,1,1
+5,Train,31,60,1.5,1,1,0,0
+6,Train,61,100,2,1,0,0,0

@@ -606,6 +606,27 @@ def create_dashboard():
             unsafe_allow_html=True
         )
     st.sidebar.markdown("[🌐 Flask 웹 UI 직접 열기](http://localhost:5001)")
+    
+    # 데이터 탐색 섹션
+    st.sidebar.markdown("---")
+    st.sidebar.header("📊 데이터 탐색")
+    
+    data_sections = {
+        "🌾 농작물 데이터": ["fields", "fruits", "fruit_trees"],
+        "🐄 동물 & 레벨": ["animals", "levels"],
+        "🏭 생산 건물": ["processing_buildings", "production_buildings_goods"],
+        "🚛 주문 시스템": ["orders", "order_tables", "boats", "train"],
+        "📈 생산 체인": ["bakery_goods", "dairy_goods", "cafe_goods"],
+    }
+    
+    selected_section = st.sidebar.selectbox(
+        "데이터 카테고리 선택:",
+        options=list(data_sections.keys())
+    )
+    
+    if st.sidebar.button("📋 선택한 데이터 보기", use_container_width=True):
+        st.sidebar.success(f"{selected_section} 데이터를 Flask 웹 UI에서 확인하세요!")
+    
     st.sidebar.markdown("---")
     player_level = st.sidebar.slider("플레이어 레벨", 1, 100, 20)
     simulation_days = st.sidebar.slider("시뮬레이션 기간 (일)", 7, 90, 30)

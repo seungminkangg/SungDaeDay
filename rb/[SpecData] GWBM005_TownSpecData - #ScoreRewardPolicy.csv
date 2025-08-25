@@ -1,0 +1,9 @@
+,,레시피 해금 레벨,레시피 해금 레벨,스코어 1점 당 보상량,스코어 1점 당 보상량
+Id,DeliveryType,MinItemLevel,MaxItemLevel,CoinPerScore,ExpPerScore
+int,enum:DeliveryType,int,int,float,float
+1,Truck,1,20,1,1
+2,Truck,21,40,1.05,1.05
+3,Truck,41,9999,1.1,1.1
+4,Train,1,20,1,1
+5,Train,21,40,1.05,1.05
+6,Train,41,9999,1.1,1.1
