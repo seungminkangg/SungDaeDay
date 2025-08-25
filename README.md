@@ -1,3 +1,5 @@
+![Good artists copy, great artists steal - Pablo Picasso](https://i.imgur.com/8XvH9kM.png)
+
 # 🚜 SungDaeDay - 헤이데이 동적 밸런싱 시뮬레이터
 
 **실제 헤이데이 게임 데이터 분석 및 동적 밸런싱 시뮬레이션 시스템**
@@ -47,9 +49,9 @@ pip install -r requirements.txt
 
 #### 3. 서버 실행 (Run Servers)
 
-**Option 1: Streamlit 대시보드만 실행**
+**🚀 Option 1: 두 서버 자동 실행 (추천)**
 ```bash
-streamlit run hayday_simulator.py --server.port 8501
+python3 start_servers.py
 ```
 
 **Option 2: Flask 웹 UI만 실행**
@@ -58,19 +60,25 @@ cd webui
 python3 app.py
 ```
 
-**Option 3: 두 서버 모두 실행 (터미널 2개 필요)**
+**Option 3: Streamlit 대시보드만 실행**
 ```bash
-# 터미널 1: Streamlit
-streamlit run hayday_simulator.py --server.port 8501
+streamlit run hayday_simulator.py --server.port 8502
+```
 
-# 터미널 2: Flask
+**Option 4: 수동으로 두 서버 모두 실행 (터미널 2개 필요)**
+```bash
+# 터미널 1: Flask (기본)
 cd webui && python3 app.py
+
+# 터미널 2: Streamlit
+streamlit run hayday_simulator.py --server.port 8502
 ```
 
 #### 4. 접속 주소 (Access URLs)
-- 📊 **Streamlit 대시보드**: http://localhost:8501
-- 🌐 **Flask 웹 UI**: http://localhost:5001  
+- 🌐 **Flask 웹 UI (기본)**: http://localhost:5001  
+- 📊 **Streamlit 대시보드**: http://localhost:8502
 - 🎲 **주문 생성기**: http://localhost:5001/order-generator
+- 🔗 **두 인터페이스 간 자유로운 이동 가능**
 
 #### 🔧 문제 해결 (Troubleshooting)
 - **Port already in use**: 포트가 사용 중이면 다른 포트 사용

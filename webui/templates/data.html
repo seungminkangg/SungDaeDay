@@ -257,11 +257,11 @@
         
         switch(category) {
             case 'animals':
-                apiUrl = '/api/animals';
+                apiUrl = '/api/csv-data/Animals';
                 title = '동물 데이터';
                 break;
             case 'levels':
-                apiUrl = '/api/levels';
+                apiUrl = '/api/csv-data/Levels';
                 title = '레벨 시스템';
                 break;
             
@@ -781,7 +781,9 @@
     // 페이지 로드 시 추가 초기화
     document.addEventListener('DOMContentLoaded', function() {
         // 사이드바 토글 이벤트 리스너
-        document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+        if (document.getElementById('sidebarToggle')) {
+            document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+        }
         
         // 연결 상태 확인
         updateConnectionStatus();
@@ -789,12 +791,12 @@
         // 정기적으로 연결 상태 확인
         setInterval(updateConnectionStatus, 30000); // 30초마다 확인
     });
+</script>
                 </div>
             </div>
         </div>
     </div>
 </div>
-</script>
 
 <style>
 #sidebar {

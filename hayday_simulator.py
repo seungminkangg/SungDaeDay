@@ -20,7 +20,7 @@ from enum import Enum
 import math
 
 # Configuration
-DATA_PATH = "/Users/smkang/cc/sc-compression/hayday_extracted_data/core_data"
+DATA_PATH = os.path.join(os.path.dirname(__file__), "hayday_extracted_data", "core_data")
 
 class DeliveryType(Enum):
     TRUCK = "Truck"
@@ -593,6 +593,20 @@ def create_dashboard():
     
     # 사이드바 설정
     st.sidebar.header("🎮 시뮬레이션 설정")
+    st.sidebar.markdown("---")
+    
+    # Flask 연동 버튼
+    if st.sidebar.button("🌐 Flask 웹 UI로 이동", use_container_width=True):
+        st.sidebar.markdown(
+            """
+            <script>
+            window.open("http://localhost:5001", "_blank");
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+    st.sidebar.markdown("[🌐 Flask 웹 UI 직접 열기](http://localhost:5001)")
+    st.sidebar.markdown("---")
     player_level = st.sidebar.slider("플레이어 레벨", 1, 100, 20)
     simulation_days = st.sidebar.slider("시뮬레이션 기간 (일)", 7, 90, 30)
     delivery_type = st.sidebar.selectbox("납품 타입", ["Truck", "Train"])

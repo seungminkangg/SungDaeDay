@@ -14,12 +14,12 @@ from datetime import datetime, timedelta
 import threading
 import time
 
-# HayDay Simulator 모듈 임포트
-sys.path.append('/Users/smkang/cc/sc-compression')
+# HayDay Simulator 모듈 임포트 - 상대 경로 사용
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 try:
     from hayday_simulator import HayDaySimulator, DeliveryType, DifficultyType
 except ImportError:
-    print("⚠️ hayday_simulator.py를 찾을 수 없습니다. 같은 디렉토리에 있는지 확인하세요.")
+    print("⚠️ hayday_simulator.py를 찾을 수 없습니다. 상위 디렉토리에 있는지 확인하세요.")
     sys.exit(1)
 
 app = Flask(__name__)
@@ -76,8 +76,9 @@ def init_simulator():
         simulator = HayDaySimulator()
         print("✅ 시뮬레이터 초기화 완료")
         
-        # 로컬라이제이션 초기화
-        localization = Localization("/Users/smkang/cc/sc-compression/hayday_extracted_data/core_data")
+        # 로컬라이제이션 초기화 - 상대 경로 사용 (core_data 디렉토리 사용)
+        localization_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data")
+        localization = Localization(localization_path)
         print("✅ 로컬라이제이션 초기화 완료")
     except Exception as e:
         print(f"❌ 초기화 실패: {e}")
@@ -331,8 +332,8 @@ def api_csv_data(filename):
         return jsonify({"error": "Simulator not initialized"}), 500
     
     try:
-        # CSV 파일 직접 읽기
-        csv_path = f"/Users/smkang/cc/sc-compression/hayday_extracted_data/core_data/{filename}.csv"
+        # CSV 파일 직접 읽기 - 상대 경로 사용
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data", f"{filename}.csv")
         if not os.path.exists(csv_path):
             return jsonify({"error": f"CSV file not found: {filename}"}), 404
         
