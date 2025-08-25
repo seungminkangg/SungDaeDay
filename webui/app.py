@@ -50,9 +50,9 @@ class Localization:
                     kr_df = kr_df.drop(0).reset_index(drop=True)
                 self.translations['kr'] = dict(zip(kr_df['TID'], kr_df['KR']))
                 
-            print(f"✅ 로컬라이제이션 로드 완료: EN({len(self.translations.get('en', {}))}), KR({len(self.translations.get('kr', {}))})")
+            print(f"Localization loaded: EN({len(self.translations.get('en', {}))}), KR({len(self.translations.get('kr', {}))})")
         except Exception as e:
-            print(f"⚠️ 로컬라이제이션 로드 실패: {e}")
+            print(f"Warning: Localization loading failed: {e}")
     
     def get_text(self, tid, lang='en'):
         """TID로 번역된 텍스트 가져오기"""
@@ -74,14 +74,14 @@ def init_simulator():
     global simulator, localization
     try:
         simulator = HayDaySimulator()
-        print("✅ 시뮬레이터 초기화 완료")
+        print("Simulator initialization completed")
         
         # 로컬라이제이션 초기화 - 상대 경로 사용 (core_data 디렉토리 사용)
         localization_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data")
         localization = Localization(localization_path)
-        print("✅ 로컬라이제이션 초기화 완료")
+        print("Localization initialization completed")
     except Exception as e:
-        print(f"❌ 초기화 실패: {e}")
+        print(f"Initialization failed: {e}")
 
 @app.route('/')
 def index():
@@ -95,12 +95,12 @@ def simulation_page():
 
 @app.route('/production')
 def production_page():
-    """생산 체인 분석 페이지"""
+    """Production 체인 분석 페이지"""
     return render_template('production.html')
 
 @app.route('/orders')
 def orders_page():
-    """주문 생성 테스트 페이지"""
+    """Order 생성 테스트 페이지"""
     return render_template('orders.html')
 
 @app.route('/data')
@@ -159,7 +159,7 @@ def api_animals():
 
 @app.route('/api/production-chains')
 def api_production_chains():
-    """생산 체인 분석 API - HayDay 데이터 기반 간단한 오버뷰"""
+    """Production 체인 분석 API - HayDay 데이터 기반 간단한 오버뷰"""
     if not simulator:
         return jsonify({"error": "Simulator not initialized"}), 500
     
@@ -263,7 +263,7 @@ def api_simulation_status():
 
 @app.route('/api/generate-order', methods=['POST'])
 def api_generate_order():
-    """주문 생성 API"""
+    """Order 생성 API"""
     if not simulator:
         return jsonify({"error": "Simulator not initialized"}), 500
     
@@ -282,16 +282,22 @@ def api_generate_order():
                 "total_value": order.total_value,
                 "difficulty": order.difficulty.value,
                 "struggle_score": order.struggle_score,
-                "level_requirement": order.level_requirement
+                "level_requirement": order.level_requirement,
+                "avg_production_time": getattr(order, 'avg_production_time', 0),
+                "total_production_time": getattr(order, 'total_production_time', 0),
+                "expiry_time": getattr(order, 'expiry_time', 60)
             })
         else:
             return jsonify({"error": "Failed to generate order"}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(f"Error generating order: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/api/levels')
 def api_levels():
-    """레벨 데이터 API"""
+    """Level 데이터 API"""
     if not simulator or simulator.exp_levels.empty:
         return jsonify({"error": "Levels data not found"}), 404
     
@@ -548,12 +554,17 @@ def generate_order_live():
                     "total_value": order.total_value,
                     "struggle_score": order.struggle_score,
                     "level_requirement": order.level_requirement,
+                    "avg_production_time": order.avg_production_time,
+                    "total_production_time": order.total_production_time,
+                    "expiry_time": order.expiry_time,
                     "items": order_details,
                     "analysis": {
                         "total_production_time": total_time,
+                        "avg_production_time_per_item": order.avg_production_time,
                         "estimated_cost": total_cost,
                         "profit_margin": ((order.total_value - total_cost) / order.total_value * 100) if order.total_value > 0 else 0,
-                        "efficiency": order.total_value / max(total_time, 1)
+                        "efficiency": order.total_value / max(total_time, 1),
+                        "time_to_value_ratio": total_time / order.total_value if order.total_value > 0 else 0
                     }
                 },
                 "available_items": items_info
@@ -565,14 +576,14 @@ def generate_order_live():
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == '__main__':
-    print("🚜 HayDay Dynamic Balancing Web UI")
+    print("HayDay Dynamic Balancing Web UI")
     print("=" * 50)
-    print("🔄 시뮬레이터 초기화 중...")
+    print("Initializing simulator...")
     
     init_simulator()
     
-    print("🌐 웹 서버 시작...")
-    print("📍 URL: http://localhost:5001")
-    print("⚠️  종료하려면 Ctrl+C를 누르세요")
+    print("Starting web server...")
+    print("URL: http://localhost:5001")
+    print("Press Ctrl+C to exit")
     
     app.run(debug=True, host='0.0.0.0', port=5001)

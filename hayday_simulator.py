@@ -40,7 +40,7 @@ class ItemLayerType(Enum):
 
 @dataclass
 class ProductionChain:
-    """생산 체인을 나타내는 데이터 클래스"""
+    """Production 체인을 나타내는 데이터 클래스"""
     item_name: str
     production_time: int  # minutes
     ingredients: Dict[str, int]  # ingredient_name: quantity
@@ -50,7 +50,7 @@ class ProductionChain:
 
 @dataclass
 class DeliveryOrder:
-    """납품 주문을 나타내는 데이터 클래스"""
+    """Delivery 주문을 나타내는 데이터 클래스"""
     order_id: str
     delivery_type: DeliveryType
     items: Dict[str, int]  # item_name: quantity
@@ -58,6 +58,9 @@ class DeliveryOrder:
     difficulty: DifficultyType
     struggle_score: float
     level_requirement: int
+    avg_production_time: int = 0  # Average 생산 시간 (분)
+    total_production_time: int = 0  # Total 생산 시간 (분)
+    expiry_time: int = 60  # 만료 시간 (분)
 
 class HayDaySimulator:
     """HayDay 생산 및 동적 밸런싱 시뮬레이터"""
@@ -88,30 +91,53 @@ class HayDaySimulator:
                         df = df.drop(0).reset_index(drop=True)
                     self.data[key] = df
                 except Exception as e:
-                    print(f"⚠️ {key} 파일 로드 실패: {e}")
+                    print(f"WARNING {key} 파일 로드 실패: {e}")
                     self.data[key] = pd.DataFrame()  # 빈 데이터프레임으로 초기화
             
-            # 모든 생산 건물 데이터 로드 (언락레벨, 생산시간, 가격 포함)
-            goods_files = [
-                'bakery_goods.csv', 'dairy_goods.csv', 'cafe_goods.csv',
-                'barbecue_grill_goods.csv', 'cake_oven_goods.csv', 'candy_machine_goods.csv',
-                'deep_fryer_goods.csv', 'donut_maker_goods.csv', 'jam_maker_goods.csv',
-                'juice_press_goods.csv', 'pie_oven_goods.csv', 'popcorn_pot_goods.csv',
-                'sandwich_bar_goods.csv', 'soup_kitchen_goods.csv', 'ice_cream_maker_goods.csv',
-                'pasta_kitchen_goods.csv', 'salad_bar_goods.csv', 'smoothie_mixer_goods.csv',
-                'sushi_bar_goods.csv', 'taco_kitchen_goods.csv', 'waffle_maker_goods.csv'
-            ]
+            # 모든 _goods.csv 파일 자동 검색 및 로드
+            import glob
+            goods_pattern = os.path.join(DATA_PATH, "*_goods.csv")
+            goods_files = glob.glob(goods_pattern)
             
-            for goods_file in goods_files:
+            print(f"Found {len(goods_files)} production building files")
+            
+            for goods_path in goods_files:
                 try:
-                    key = goods_file.replace('_goods.csv', '')
-                    df = pd.read_csv(f"{DATA_PATH}/{goods_file}")
+                    filename = os.path.basename(goods_path)
+                    key = filename.replace('.csv', '')  # 전체 파일명을 키로 사용 (ex: bakery_goods)
+                    df = pd.read_csv(goods_path)
+                    
                     # 데이터 타입 행 제거
                     if len(df) > 1 and df.iloc[0].astype(str).str.contains('int|String|Boolean|float', na=False).any():
                         df = df.drop(0).reset_index(drop=True)
+                    
+                    # Name이 비어있지 않은 행만 필터링
+                    if 'Name' in df.columns:
+                        df = df[df['Name'].notna() & (df['Name'].astype(str).str.strip() != '')]
+                        df = df.reset_index(drop=True)
+                    
                     self.data[key] = df
+                    if len(df) > 0:
+                        print(f"Loaded {key}: {len(df)} items")
                 except Exception as e:
-                    print(f"⚠️ {goods_file} 파일 로드 실패: {e}")
+                    print(f"Warning: {filename} loading failed: {e}")
+                    self.data[key] = pd.DataFrame()
+            
+            # 농작물 및 과일 데이터도 로드
+            crop_files = ['fields.csv', 'fruits.csv', 'fruit_trees.csv']
+            for crop_file in crop_files:
+                try:
+                    key = crop_file.replace('.csv', '')
+                    df = pd.read_csv(os.path.join(DATA_PATH, crop_file))
+                    if len(df) > 1 and df.iloc[0].astype(str).str.contains('int|String|Boolean|float', na=False).any():
+                        df = df.drop(0).reset_index(drop=True)
+                    if 'Name' in df.columns:
+                        df = df[df['Name'].notna() & (df['Name'].astype(str).str.strip() != '')]
+                        df = df.reset_index(drop=True)
+                    self.data[key] = df
+                    print(f"Loaded {key}: {len(df)} items")
+                except Exception as e:
+                    print(f"Warning: {crop_file} loading failed: {e}")
                     self.data[key] = pd.DataFrame()
             
             # HayDay 실제 주문/경험 시스템 데이터 로드
@@ -126,19 +152,19 @@ class HayDaySimulator:
                     if len(df) > 1 and df.iloc[0].astype(str).str.contains('int|String|Boolean|float', na=False).any():
                         setattr(self, df_name, df.drop(0).reset_index(drop=True))
                 
-                print("✅ HayDay 주문 시스템 데이터 로드 완료!")
+                print("HayDay order system data loading completed!")
                 
             except Exception as e:
-                print(f"⚠️ HayDay 주문 데이터 로드 실패: {e}")
+                print(f"Warning: HayDay order data loading failed: {e}")
                 # 기본 데이터프레임으로 초기화
                 self.orders = pd.DataFrame()
                 self.predefined_orders = pd.DataFrame() 
                 self.exp_levels = pd.DataFrame()
             
-            print("✅ 데이터 로드 완료!")
+            print("Data loading completed!")
             
         except Exception as e:
-            print(f"❌ 데이터 로드 실패: {e}")
+            print(f"Data loading failed: {e}")
             # 모든 데이터를 빈 데이터프레임으로 초기화
             self.data = {}
             self.delivery_patterns = pd.DataFrame()
@@ -147,7 +173,7 @@ class HayDaySimulator:
             self.reward_policies = pd.DataFrame()
     
     def analyze_production_chains(self) -> Dict[str, ProductionChain]:
-        """생산 체인 분석"""
+        """Production 체인 분석"""
         chains = {}
         
         # 동물 생산 체인
@@ -187,7 +213,7 @@ class HayDaySimulator:
         return chains
     
     def calculate_struggle_score(self, player_level: int, inventory: Dict[str, int]) -> float:
-        """플레이어의 어려움 지수(Struggle Score) 계산"""
+        """Player의 어려움 지수(Struggle Score) 계산"""
         base_score = max(0, 50 - player_level)  # 레벨이 낮을수록 높은 기본 점수
         
         # 인벤토리 부족도에 따른 점수 추가
@@ -204,10 +230,13 @@ class HayDaySimulator:
         import uuid
         import random
         
-        # 기본 아이템 목록 (하드코딩)
-        basic_items = ["밀", "옥수수", "당근", "설탕수수", "코코아", "계란", "우유"]
+        # 플레이어 레벨에 따른 사용 가능한 모든 아이템 가져오기
+        available_items = self._get_available_items(player_level)
+        if not available_items:
+            # Items이 없으면 기본 아이템 사용
+            available_items = ["밀", "옥수수", "당근", "설탕수수", "코코아", "계란", "우유"]
         
-        # 난이도 설정
+        # 난이도 설정 (높은 어려움 지수 = 어려운 주문)
         if struggle_score < 20:
             difficulty = DifficultyType.VERY_EASY
             item_count = 1
@@ -224,12 +253,37 @@ class HayDaySimulator:
             difficulty = DifficultyType.VERY_HARD
             item_count = random.randint(4, 5)
         
-        # 랜덤 아이템 선택
-        selected_items = random.sample(basic_items, min(item_count, len(basic_items)))
-        items = {item: random.randint(1, 10) for item in selected_items}
+        # 랜덤 아이템 선택 - 레벨에 맞는 다양한 아이템 선택
+        selected_items = random.sample(available_items, min(item_count, len(available_items)))
+        items = {}
         
-        # 기본 가치 계산
-        total_value = sum(qty * 10 for qty in items.values()) * (player_level // 5 + 1)
+        for item in selected_items:
+            # Items 수량은 난이도에 따라 조정
+            if difficulty == DifficultyType.VERY_EASY:
+                qty = random.randint(1, 3)
+            elif difficulty == DifficultyType.EASY:
+                qty = random.randint(2, 5)
+            elif difficulty == DifficultyType.NORMAL:
+                qty = random.randint(3, 7)
+            elif difficulty == DifficultyType.HARD:
+                qty = random.randint(4, 9)
+            else:
+                qty = random.randint(5, 12)
+            items[item] = qty
+        
+        # 실제 아이템 가격 및 생산 시간 계산
+        total_value = 0
+        total_time = 0
+        production_times = []
+        
+        for item_name, item_qty in items.items():
+            item_value = self._get_item_value(item_name)
+            item_time = self._get_item_production_time(item_name)
+            total_value += item_value * item_qty
+            total_time += item_time * item_qty
+            production_times.append(item_time)
+        
+        avg_time = sum(production_times) / len(production_times) if production_times else 0
         
         return DeliveryOrder(
             order_id=f"BASIC-{uuid.uuid4().hex[:8].upper()}",
@@ -238,7 +292,9 @@ class HayDaySimulator:
             total_value=total_value,
             difficulty=difficulty,
             struggle_score=struggle_score,
-            level_requirement=player_level
+            level_requirement=player_level,
+            avg_production_time=int(avg_time),
+            total_production_time=total_time
         )
     
     def generate_delivery_order(self, player_level: int, struggle_score: float, 
@@ -259,7 +315,7 @@ class HayDaySimulator:
         return self._generate_dynamic_order(player_level, struggle_score, delivery_type, level_data)
     
     def _get_level_data(self, player_level: int):
-        """플레이어 레벨에 해당하는 데이터 조회"""
+        """Player 레벨에 해당하는 데이터 조회"""
         if self.exp_levels.empty:
             return None
             
@@ -270,7 +326,7 @@ class HayDaySimulator:
             ]
             return level_data.iloc[0] if not level_data.empty else None
         except Exception as e:
-            print(f"⚠️ 레벨 데이터 조회 오류: {e}")
+            print(f"WARNING 레벨 데이터 조회 오류: {e}")
             return None
     
     def _get_predefined_order(self, player_level: int):
@@ -301,16 +357,18 @@ class HayDaySimulator:
                     items=items,
                     total_value=sum(amount * 10 for amount in items.values()),  # 임시 가치
                     difficulty=DifficultyType.EASY,
+                    struggle_score=50.0,  # 기본값
+                    level_requirement=player_level,
                     expiry_time=60
                 )
         except Exception as e:
-            print(f"⚠️ 사전 정의 주문 생성 오류: {e}")
+            print(f"WARNING 사전 정의 주문 생성 오류: {e}")
         
         return None
     
     def _generate_dynamic_order(self, player_level: int, struggle_score: float, 
                                delivery_type: DeliveryType, level_data) -> DeliveryOrder:
-        """동적 주문 생성 (HayDay 레벨 데이터 기반)"""
+        """Dynamic 주문 생성 (HayDay 레벨 데이터 기반)"""
         try:
             # 레벨 데이터에서 주문 매개변수 추출
             min_goods = int(level_data.get('MinGoodsInOrderDelivery', 1))
@@ -318,16 +376,16 @@ class HayDaySimulator:
             min_value = int(level_data.get('OrderMinValue', 100))
             max_value = int(level_data.get('OrderMaxValue', 600))
             
-            # 어려움 지수에 따른 난이도 조절
-            if struggle_score > 70:  # 높은 어려움 = 쉬운 주문
+            # 어려움 지수에 따른 난이도 조절 (높은 지수 = 어려운 주문)
+            if struggle_score < 30:  # 낮은 어려움 = 쉬운 주문
                 num_items = min_goods
                 target_value = min_value
                 difficulty = DifficultyType.EASY
-            elif struggle_score > 40:  # 중간 어려움
+            elif struggle_score < 60:  # 중간 어려움
                 num_items = min(max_goods, min_goods + 1) 
                 target_value = (min_value + max_value) // 2
                 difficulty = DifficultyType.NORMAL
-            else:  # 낮은 어려움 = 어려운 주문
+            else:  # 높은 어려움 = 어려운 주문
                 num_items = max_goods
                 target_value = max_value
                 difficulty = DifficultyType.HARD
@@ -335,18 +393,89 @@ class HayDaySimulator:
             # 이용 가능한 아이템 풀 생성 (플레이어 레벨 기준)
             available_items = self._get_available_items(player_level)
             
-            # 주문 아이템 선택
+            # Items을 카테고리별로 분류
+            crops = []
+            animal_products = []
+            basic_goods = []
+            advanced_goods = []
+            
+            for item in available_items:
+                production_time = self._get_item_production_time(item)
+                value = self._get_item_value(item)
+                
+                if production_time <= 5:  # 5분 이하 - 기본 농작물
+                    crops.append(item)
+                elif production_time <= 60:  # 1시간 이하 - 동물/기본 제품
+                    if value < 50:
+                        animal_products.append(item)
+                    else:
+                        basic_goods.append(item)
+                else:  # 1시간 초과 - 고급 제품
+                    advanced_goods.append(item)
+            
+            # 난이도와 어려움 지수에 따라 카테고리 비율 조정
             items = {}
-            selected_items = np.random.choice(available_items, size=min(num_items, len(available_items)), replace=False)
+            selected_items = []
+            
+            if struggle_score > 70:  # 높은 어려움 = 쉽게, 기본 아이템 위주
+                # 60% 기본, 30% 동물, 10% 고급
+                if crops:
+                    selected_items.extend(random.sample(crops, min(int(num_items * 0.6), len(crops))))
+                if animal_products:
+                    selected_items.extend(random.sample(animal_products, min(int(num_items * 0.3), len(animal_products))))
+                if basic_goods:
+                    selected_items.extend(random.sample(basic_goods, min(int(num_items * 0.1), len(basic_goods))))
+            elif struggle_score > 40:  # 중간 어려움 = 균형
+                # 25% 기본, 35% 동물, 25% 기본제품, 15% 고급
+                if crops:
+                    selected_items.extend(random.sample(crops, min(max(1, int(num_items * 0.25)), len(crops))))
+                if animal_products:
+                    selected_items.extend(random.sample(animal_products, min(max(1, int(num_items * 0.35)), len(animal_products))))
+                if basic_goods:
+                    selected_items.extend(random.sample(basic_goods, min(max(1, int(num_items * 0.25)), len(basic_goods))))
+                if advanced_goods:
+                    selected_items.extend(random.sample(advanced_goods, min(int(num_items * 0.15), len(advanced_goods))))
+            else:  # 낮은 어려움 = 어려운 주문, 고급 아이템 위주
+                # 10% 기본, 20% 동물, 30% 기본제품, 40% 고급
+                if advanced_goods:
+                    selected_items.extend(random.sample(advanced_goods, min(max(1, int(num_items * 0.4)), len(advanced_goods))))
+                if basic_goods:
+                    selected_items.extend(random.sample(basic_goods, min(max(1, int(num_items * 0.3)), len(basic_goods))))
+                if animal_products:
+                    selected_items.extend(random.sample(animal_products, min(max(1, int(num_items * 0.2)), len(animal_products))))
+                if crops:
+                    selected_items.extend(random.sample(crops, min(int(num_items * 0.1), len(crops))))
+            
+            # 만약 선택된 아이템이 부족하면 랜덤 추가
+            if len(selected_items) < num_items:
+                remaining = list(set(available_items) - set(selected_items))
+                if remaining:
+                    selected_items.extend(random.sample(remaining, min(num_items - len(selected_items), len(remaining))))
+            
+            # Remove duplicates 및 최종 아이템 수 조정
+            selected_items = list(set(selected_items))[:num_items]
             
             for item in selected_items:
                 base_amount = max(1, target_value // (len(selected_items) * 50))  # 대략적인 아이템당 가치
                 amount = max(1, base_amount + np.random.randint(-base_amount//2, base_amount//2 + 1))
                 items[item] = amount
             
-            # 실제 주문 가치 계산
-            actual_value = sum(item_qty * self._get_item_value(item_name) 
-                             for item_name, item_qty in items.items())
+            # 실제 주문 가치 및 생산 시간 계산
+            actual_value = 0
+            total_time = 0
+            production_times = []
+            
+            for item_name, item_qty in items.items():
+                item_value = self._get_item_value(item_name)
+                item_time = self._get_item_production_time(item_name)
+                actual_value += item_value * item_qty
+                # 각 아이템의 총 생산 시간
+                item_total_time = item_time * item_qty
+                total_time += item_total_time
+                production_times.append(item_time)
+            
+            # Average 생산 시간 계산
+            avg_time = sum(production_times) / len(production_times) if production_times else 0
             
             return DeliveryOrder(
                 order_id=f"{delivery_type.value}_{np.random.randint(1000, 9999)}",
@@ -356,11 +485,13 @@ class HayDaySimulator:
                 difficulty=difficulty,
                 struggle_score=struggle_score,
                 level_requirement=player_level,
+                avg_production_time=int(avg_time),
+                total_production_time=total_time,
                 expiry_time=60
             )
             
         except Exception as e:
-            print(f"⚠️ 동적 주문 생성 오류: {e}")
+            print(f"Warning: Dynamic order generation error: {e}")
             return self._generate_basic_order(player_level, delivery_type, struggle_score)
     
     
@@ -390,55 +521,156 @@ class HayDaySimulator:
         return items
     
     def _get_available_items(self, player_level: int) -> List[str]:
-        """플레이어 레벨에 따른 사용 가능한 아이템 목록 (실제 HayDay 언락레벨 적용)"""
+        """Player 레벨에 따른 사용 가능한 아이템 목록 (실제 HayDay 언락레벨 적용)"""
         available = []
         
-        # 기본 농작물 (항상 사용 가능)
-        basic_crops = ["Wheat", "Corn"]
-        if player_level >= 1:
-            available.extend(basic_crops)
+        # Exclude할 아이템 패턴 (이벤트, 더미, 테스트 아이템)
+        exclude_patterns = [
+            'CountyFair',  # 박람회 이벤트 아이템
+            'Dummy',       # 더미 아이템
+            'Placeholder', # 플레이스홀더
+            'Test',        # 테스트 아이템
+            'Ticket',      # 티켓류
+            'Ribbon',      # 리본류
+            'Bonus',       # 보너스 아이템
+            'Easter',      # 이스터 이벤트
+            'Christmas',   # 크리스마스 이벤트
+            'Halloween',   # 할로윈 이벤트
+            'Valentine',   # 발렌타인 이벤트
+            'Birthday',    # 생일 이벤트
+            'Anniversary', # 기념일 이벤트
+            '_egg',        # 이스터 에그 아이템
+            'Event',       # 모든 이벤트 아이템
+            'Special',     # 스페셜 이벤트
+            'Limited',     # 한정판 아이템
+            'Seasonal'     # 시즌 아이템
+        ]
         
-        # 동물 제품 (언락레벨 적용)
-        if 'animals' in self.data and not self.data['animals'].empty:
-            for _, animal in self.data['animals'].iterrows():
-                if (pd.notna(animal.get('Good')) and 
-                    pd.notna(animal.get('UnlockLevel')) and
-                    int(animal.get('UnlockLevel', 999)) <= player_level):
-                    available.append(str(animal.get('Good')))
-        
-        # 모든 생산 건물 제품 (언락레벨 적용)
-        production_buildings = ['bakery', 'dairy', 'cafe', 'barbecue_grill', 'cake_oven', 
-                              'candy_machine', 'deep_fryer', 'jam_maker', 'juice_press']
-        
-        for building in production_buildings:
-            if building in self.data and not self.data[building].empty:
-                for _, product in self.data[building].iterrows():
+        # 모든 로드된 데이터에서 아이템 추출
+        for key, df in self.data.items():
+            if df.empty:
+                continue
+            
+            # 이벤트 관련 데이터는 아예 건너뛰기
+            if any(event in key.lower() for event in ['countyfair', 'dummy', 'seasonal', 'event', 'easter', 'christmas', 'halloween']):
+                continue
+                
+            # 농작물 및 과일 (fields, fruits, fruit_trees)
+            if key in ['fields', 'fruits', 'fruit_trees']:
+                for _, item in df.iterrows():
+                    if (pd.notna(item.get('Name')) and 
+                        pd.notna(item.get('UnlockLevel')) and
+                        int(item.get('UnlockLevel', 999)) <= player_level):
+                        item_name = str(item.get('Name'))
+                        # Exclude 패턴 체크
+                        if not any(pattern in item_name for pattern in exclude_patterns):
+                            if item_name not in available:
+                                available.append(item_name)
+            
+            # Animal products (animals)
+            elif key == 'animals':
+                for _, animal in df.iterrows():
+                    if (pd.notna(animal.get('Good')) and 
+                        pd.notna(animal.get('UnlockLevel')) and
+                        int(animal.get('UnlockLevel', 999)) <= player_level):
+                        item_name = str(animal.get('Good'))
+                        # Exclude 패턴 체크
+                        if not any(pattern in item_name for pattern in exclude_patterns):
+                            if item_name not in available:
+                                available.append(item_name)
+            
+            # 모든 _goods로 끝나는 생산 건물 데이터
+            elif key.endswith('_goods'):
+                for _, product in df.iterrows():
                     if (pd.notna(product.get('Name')) and 
                         pd.notna(product.get('UnlockLevel')) and
                         int(product.get('UnlockLevel', 999)) <= player_level):
-                        available.append(str(product.get('Name')))
+                        item_name = str(product.get('Name'))
+                        # Exclude 패턴 체크
+                        if not any(pattern in item_name for pattern in exclude_patterns):
+                            if item_name not in available:
+                                available.append(item_name)
         
-        # 중복 제거 및 레벨 순으로 정렬
+        # Remove duplicates 및 레벨 순으로 정렬
         available = list(set(available))
         
-        # 실제 언락레벨로 정렬 (낮은 레벨부터)
+        # Sort by unlock level (낮은 레벨부터)
         def get_unlock_level(item_name):
-            for building in production_buildings:
-                if building in self.data:
-                    matching = self.data[building][self.data[building]['Name'] == item_name]
+            # 모든 로드된 데이터에서 언락레벨 찾기
+            for key, df in self.data.items():
+                if df.empty:
+                    continue
+                    
+                # 농작물/과일
+                if key in ['fields', 'fruits', 'fruit_trees']:
+                    if 'Name' in df.columns:
+                        matching = df[df['Name'] == item_name]
+                        if not matching.empty:
+                            return int(matching.iloc[0].get('UnlockLevel', 999))
+                
+                # Animal products
+                elif key == 'animals':
+                    matching = df[df['Good'] == item_name]
                     if not matching.empty:
                         return int(matching.iloc[0].get('UnlockLevel', 999))
+                
+                # Production buildings 제품
+                elif key.endswith('_goods'):
+                    if 'Name' in df.columns:
+                        matching = df[df['Name'] == item_name]
+                        if not matching.empty:
+                            return int(matching.iloc[0].get('UnlockLevel', 999))
+            
             return 1  # 기본값
         
         available.sort(key=get_unlock_level)
-        return available[:25]  # 상위 25개 아이템
+        # 디버그 출력 제거 (렉 방지)
+        # print(f"Available items for level {player_level}: {len(available)} items")
+        # print(f"First 10 items: {available[:10]}")
+        return available  # 모든 사용 가능한 아이템 반환
     
     def _get_item_value(self, item_name: str) -> int:
-        """아이템 가치 조회 (실제 HayDay 가격 데이터 사용)"""
+        """Item 가치 조회 (실제 HayDay 가격 데이터 사용)"""
         try:
-            # 모든 생산 건물에서 실제 가격 찾기
-            production_buildings = ['bakery', 'dairy', 'cafe', 'barbecue_grill', 'cake_oven', 
-                                  'candy_machine', 'deep_fryer', 'jam_maker', 'juice_press']
+            # 모든 로드된 데이터에서 가격 찾기
+            for key, df in self.data.items():
+                if df.empty:
+                    continue
+                    
+                # 농작물/과일
+                if key in ['fields', 'fruits', 'fruit_trees']:
+                    matching = df[df['Name'] == item_name]
+                    if not matching.empty:
+                        item = matching.iloc[0]
+                        for price_col in ['OrderPrice', 'OrderValue', 'BoatOrderValue', 'Price', 'Value']:
+                            if pd.notna(item.get(price_col)):
+                                try:
+                                    price = int(float(item.get(price_col)))
+                                    if price > 0:
+                                        return price
+                                except (ValueError, TypeError):
+                                    continue
+                
+                # Animal products
+                elif key == 'animals':
+                    matching = df[df['Good'] == item_name]
+                    if not matching.empty:
+                        animal = matching.iloc[0]
+                        return int(animal.get('ProcessValue', animal.get('Value', 10)))
+                
+                # Production buildings 제품
+                elif key.endswith('_goods'):
+                    matching = df[df['Name'] == item_name]
+                    if not matching.empty:
+                        product = matching.iloc[0]
+                        for price_col in ['OrderPrice', 'OrderValue', 'BoatOrderValue', 'Price', 'Value']:
+                            if pd.notna(product.get(price_col)):
+                                try:
+                                    price = int(float(product.get(price_col)))
+                                    if price > 0:
+                                        return price
+                                except (ValueError, TypeError):
+                                    continue
             
             for building in production_buildings:
                 if building in self.data and not self.data[building].empty:
@@ -455,7 +687,7 @@ class HayDaySimulator:
                                 except (ValueError, TypeError):
                                     continue
             
-            # 동물 제품 가격 찾기
+            # Animal products 가격 찾기
             if 'animals' in self.data and not self.data['animals'].empty:
                 matching_animals = self.data['animals'][self.data['animals']['Good'] == item_name]
                 if not matching_animals.empty:
@@ -470,7 +702,7 @@ class HayDaySimulator:
                                 continue
         
         except Exception as e:
-            print(f"⚠️ 아이템 가치 조회 오류: {e}")
+            print(f"Warning: Item value query error: {e}")
         
         # HayDay 기본 가치 (실제 게임 기반)
         base_values = {
@@ -483,23 +715,36 @@ class HayDaySimulator:
         return base_values.get(item_name, 20)  # 기본값 20
     
     def _get_item_production_time(self, item_name: str) -> int:
-        """아이템 생산시간 조회 (실제 HayDay TimeMin 데이터)"""
+        """Item 생산시간 조회 (실제 HayDay TimeMin 데이터)"""
         try:
-            production_buildings = ['bakery', 'dairy', 'cafe', 'barbecue_grill', 'cake_oven', 
-                                  'candy_machine', 'deep_fryer', 'jam_maker', 'juice_press']
-            
-            for building in production_buildings:
-                if building in self.data and not self.data[building].empty:
-                    matching_items = self.data[building][self.data[building]['Name'] == item_name]
-                    if not matching_items.empty:
-                        item = matching_items.iloc[0]
+            # 모든 로드된 데이터에서 생산시간 찾기
+            for key, df in self.data.items():
+                if df.empty:
+                    continue
+                    
+                # 농작물/과일
+                if key in ['fields', 'fruits', 'fruit_trees']:
+                    matching = df[df['Name'] == item_name]
+                    if not matching.empty:
+                        item = matching.iloc[0]
                         if pd.notna(item.get('TimeMin')):
                             try:
                                 return int(item.get('TimeMin'))
                             except (ValueError, TypeError):
-                                continue
+                                pass
+                
+                # Production buildings 제품
+                elif key.endswith('_goods'):
+                    matching = df[df['Name'] == item_name]
+                    if not matching.empty:
+                        item = matching.iloc[0]
+                        if pd.notna(item.get('TimeMin')):
+                            try:
+                                return int(item.get('TimeMin'))
+                            except (ValueError, TypeError):
+                                pass
         except Exception as e:
-            print(f"⚠️ 생산시간 조회 오류: {e}")
+            pass  # Silent error handling
         
         # 기본 생산시간 (분 단위)
         default_times = {
@@ -510,7 +755,7 @@ class HayDaySimulator:
         return default_times.get(item_name, 15)  # 기본값 15분
     
     def _get_item_unlock_level(self, item_name: str) -> int:
-        """아이템 언락레벨 조회"""
+        """Item 언락레벨 조회"""
         try:
             production_buildings = ['bakery', 'dairy', 'cafe', 'barbecue_grill', 'cake_oven', 
                                   'candy_machine', 'deep_fryer', 'jam_maker', 'juice_press']
@@ -526,7 +771,7 @@ class HayDaySimulator:
                             except (ValueError, TypeError):
                                 continue
                                 
-            # 동물 제품도 확인
+            # Animal products도 확인
             if 'animals' in self.data and not self.data['animals'].empty:
                 matching_animals = self.data['animals'][self.data['animals']['Good'] == item_name]
                 if not matching_animals.empty:
@@ -537,7 +782,7 @@ class HayDaySimulator:
                         except (ValueError, TypeError):
                             pass
         except Exception as e:
-            print(f"⚠️ 언락레벨 조회 오류: {e}")
+            print(f"WARNING 언락레벨 조회 오류: {e}")
         
         return 1  # 기본값
     
@@ -681,7 +926,7 @@ def create_dashboard():
                 generated_order = simulator.generate_delivery_order(test_level, struggle_score, delivery_type_enum)
             
             if generated_order:
-                st.success("✅ 주문이 생성되었습니다!")
+                st.success("SUCCESS 주문이 생성되었습니다!")
                 
                 # 주문 정보 표시
                 col1, col2, col3 = st.columns(3)
@@ -747,7 +992,7 @@ def create_dashboard():
                     efficiency = generated_order.total_value / max(total_production_time, 1)
                     st.metric("시간당 수익", f"{efficiency:.1f} 코인/분")
             else:
-                st.error("❌ 주문 생성에 실패했습니다.")
+                st.error("ERROR 주문 생성에 실패했습니다.")
     
     with tab2:
         st.header("📊 경제 시뮬레이션")
@@ -963,7 +1208,7 @@ def create_dashboard():
                 st.metric("사전정의 주문", len(simulator.predefined_orders))
             
             with col2:
-                # 생산 건물별 아이템 수
+                # Production buildings별 아이템 수
                 for category, count in list(data_stats.items())[:4]:
                     st.metric(f"{category.title()}", count)
         
@@ -1018,15 +1263,15 @@ def create_dashboard():
         system_col1, system_col2, system_col3 = st.columns(3)
         
         with system_col1:
-            st.success("✅ HayDay 데이터 로드됨")
+            st.success("SUCCESS HayDay 데이터 로드됨")
             st.info(f"📁 {len(simulator.data)} 개 데이터 카테고리")
         
         with system_col2:
-            st.success("✅ 시뮬레이션 엔진 가동중")
+            st.success("SUCCESS 시뮬레이션 엔진 가동중")
             st.info("🎯 레벨별 동적 밸런싱 활성화")
         
         with system_col3:
-            st.success("✅ 실제 가격/시간 데이터 적용")
+            st.success("SUCCESS 실제 가격/시간 데이터 적용")
             st.info("⏰ 실시간 주문 생성 가능")
 
 if __name__ == "__main__":

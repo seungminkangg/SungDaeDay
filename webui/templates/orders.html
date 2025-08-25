@@ -284,6 +284,12 @@
                                 <div class="text-muted small">총 가치</div>
                                 <div class="h5 text-success">${formatNumber(order.total_value)} 코인</div>
                                 <div class="text-muted small">어려움 지수: ${order.struggle_score.toFixed(1)}</div>
+                                <div class="text-info small mt-2">
+                                    <i class="fas fa-clock"></i> 평균 생산시간: ${order.avg_production_time || 0}분
+                                </div>
+                                <div class="text-warning small">
+                                    <i class="fas fa-hourglass-half"></i> 총 생산시간: ${order.total_production_time || 0}분
+                                </div>
                             </div>
                         </div>
                     </div>

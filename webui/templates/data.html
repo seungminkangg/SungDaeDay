@@ -580,18 +580,21 @@
             }
         }));
         
-        // Tabulator 테이블 생성
+        // Tabulator 테이블 생성 - 개선된 스타일링
         currentTable = new Tabulator("#data-table", {
             data: data,
             columns: columns,
-            layout: "fitColumns",
-            responsiveLayout: "hide",
+            layout: "fitDataTable", // 데이터에 맞게 자동 조정
+            responsiveLayout: "collapse",
+            responsiveLayoutCollapseStartOpen: false,
             pagination: "local",
             paginationSize: itemsPerPage,
             paginationSizeSelector: [10, 25, 50, 100],
             movableColumns: true, // 컬럼 드래그앤드롭 활성화
             resizableColumns: true,
             headerFilterLiveFilterDelay: 300,
+            rowHeight: 45, // 행 높이 증가
+            minHeight: 500, // 최소 높이 설정
             locale: "ko",
             langs: {
                 "ko": {
@@ -821,15 +824,22 @@
         sidebar.classList.toggle('collapsed');
         
         if (sidebar.classList.contains('collapsed')) {
-            // 접힘
+            // 접힘 - 사이드바 숨기고 메인 콘텐츠 전체 너비 사용
+            sidebar.style.display = 'none';
             mainContent.className = 'col-12';
             icon.className = 'fas fa-chevron-right';
-            sidebar.style.marginLeft = '-100%';
         } else {
-            // 펼침
+            // 펼침 - 사이드바 보이고 원래 Grid 레이아웃 복원
+            sidebar.style.display = 'block';
             mainContent.className = 'col-md-9 col-lg-10';
             icon.className = 'fas fa-chevron-left';
-            sidebar.style.marginLeft = '0';
+        }
+        
+        // 테이블 리사이즈 트리거 (Tabulator 테이블이 새 너비에 맞게 조정되도록)
+        if (currentTable) {
+            setTimeout(() => {
+                currentTable.redraw(true);
+            }, 300);
         }
     }
 
@@ -886,11 +896,13 @@
 }
 
 #sidebar.collapsed {
-    margin-left: -100% !important;
+    display: none;
 }
 
 #mainContent {
     transition: all 0.3s ease;
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
 .list-group-item {
@@ -911,6 +923,102 @@
 
 .list-group-item.active:hover {
     background-color: #1B5E20;
+}
+/* Tabulator 테이블 스타일링 개선 */
+.tabulator {
+    font-size: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tabulator .tabulator-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabulator .tabulator-header .tabulator-col {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    padding: 12px 8px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.tabulator .tabulator-header .tabulator-col:hover {
+    background-color: #e9ecef;
+}
+
+.tabulator-row {
+    border-bottom: 1px solid #f1f3f4;
+    min-height: 45px;
+}
+
+.tabulator-row:hover {
+    background-color: #f8f9fa;
+}
+
+.tabulator-row:nth-child(even) {
+    background-color: #fafbfc;
+}
+
+.tabulator-cell {
+    padding: 12px 8px;
+    border-right: 1px solid #f1f3f4;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.tabulator-pagination {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.tabulator-page {
+    margin: 0 3px;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.tabulator-page.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.tabulator-page:hover {
+    background-color: #e9ecef;
+}
+
+/* 헤더 필터 스타일링 */
+.tabulator-header-filter input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* 반응형 접기/펼치기 버튼 스타일링 */
+.tabulator-responsive-collapse-toggle {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    font-size: 12px;
+}
+
+/* 데이터가 없을 때 메시지 스타일링 */
+.tabulator-placeholder {
+    padding: 40px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
 }
 </style>
 {% endblock %}
