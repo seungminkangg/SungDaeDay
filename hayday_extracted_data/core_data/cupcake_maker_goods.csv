@@ -1,0 +1,16 @@
+Name,ToolIconExportName,TID,ProcessingBuilding,RequirementAmount,Requirement,TimeMin,OrderPrice,OrderExp,ExpCollect,InstantComplete,DumbValue,OrderValue,BoatOrderValue,UnlockLevel,DescriptionTID,Difficulty,PendingRelease
+String,String,String,String,int,String,int,int,int,int,int,int,int,int,int,string,int,Boolean
+Plain Cupcake,recipe_plain_cupcake,TID_PLAIN_CUPCAKE,Cupcake_Maker,3,White Sugar,40,145,140,34,3,78,51,66,109,TID_CUPCAKE_MAKER_PRODUCT_DESCRIPTION,54,
+,,,,5,Wheat,,,,,,,,,,,,
+,,,,1,Egg,,,,,,,,,,,,
+,,,,2,Milk,,,,,,,,,,,,
+Tropical Cupcake,recipe_tropical_cupcake,TID_TROPICAL_CUPCAKE,Cupcake_Maker,1,Plain Cupcake,90,296,284,68,5,159,103,118,112,TID_CUPCAKE_MAKER_PRODUCT_DESCRIPTION,108,
+,,,,2,Coconut,,,,,,,,,,,,
+,,,,3,Pineapple,,,,,,,,,,,,
+Cookie Cupcake,recipe_cookie_cupcake,TID_COOKIE_CUPCAKE,Cupcake_Maker,1,Plain Cupcake,120,368,354,85,5,198,126,147,114,TID_CUPCAKE_MAKER_PRODUCT_DESCRIPTION,131,
+,,,,2,Cookie,,,,,,,,,,,,
+,,,,2,Cream,,,,,,,,,,,,
+,,,,1,Cacao,,,,,,,,,,,,
+Guava Cupcake,recipe_guava_cupcake,TID_GUAVA_CUPCAKE,Cupcake_Maker,1,Plain Cupcake,70,302,290,70,4,162,101,116,109,TID_CUPCAKE_MAKER_PRODUCT_DESCRIPTION,105,
+,,,,2,Guava,,,,,,,,,,,,
+,,,,1,Cream,,,,,,,,,,,,

@@ -1,0 +1,55 @@
+{
+  "total_files": 319,
+  "categories": {
+    "other": 178,
+    "animals": 11,
+    "goods": 57,
+    "events": 9,
+    "rewards": 23,
+    "orders": 12,
+    "buildings": 6,
+    "decorations": 16,
+    "progression": 7
+  },
+  "key_statistics": {
+    "data_categories": {
+      "other": 178,
+      "animals": 11,
+      "goods": 57,
+      "events": 9,
+      "rewards": 23,
+      "orders": 12,
+      "buildings": 6,
+      "decorations": 16,
+      "progression": 7
+    },
+    "key_files": [
+      {
+        "file": "animals",
+        "rows": 14,
+        "columns": 32
+      },
+      {
+        "file": "exp_levels",
+        "rows": 1500,
+        "columns": 82
+      },
+      {
+        "file": "fields",
+        "rows": 40,
+        "columns": 26
+      },
+      {
+        "file": "achievements",
+        "rows": 200,
+        "columns": 21
+      },
+      {
+        "file": "boosters",
+        "rows": 256,
+        "columns": 21
+      }
+    ],
+    "game_mechanics": {}
+  }
+}

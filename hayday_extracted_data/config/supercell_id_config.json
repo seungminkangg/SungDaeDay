@@ -1,0 +1,21 @@
+{
+  "Enabled": true,
+  "DisabledCountries": [
+    {
+      "loginCountry": "CN"
+    }
+  ],
+  "ScFileName": "sc/supercell_id.sc",
+  "Game": "soil",
+  "PreloadingEnabled":  true,
+  "InternalDomains": [
+    "www.google.com"
+  ],
+  "UseNative": true,
+  "UseConnectedGames": [],
+  "UseConnectedGamesPlatforms": [],
+  "UseSocialCountries": ["ALL"],
+  "EnableStoreAndGifts": true,
+  "UseSessionToken": true,
+  "UseUniqueHandles": true
+}

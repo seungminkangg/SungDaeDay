@@ -1,0 +1,5 @@
+Name,FileName,East,North,South,West,BackgroundColour,DecoLayer,DecoBorder
+String,String,String,String,String,String,String,String,String
+Canvas1,data/level_deco.csv,bg_edge_canvas1_east,bg_edge_canvas1_north,bg_edge_canvas1_south,bg_edge_canvas1_west,FF4c919f,deco_layer_01,Decoeventborder
+Canvas2,data/level_deco.csv,bg_edge_east,bg_edge_north,bg_edge_south,bg_edge_west,FF2222FF,,Decoeventborder
+Canvas3,data/level_deco.csv,bg_edge_east,bg_edge_north,bg_edge_south,bg_edge_west,FF698E1C,,Decoeventborder

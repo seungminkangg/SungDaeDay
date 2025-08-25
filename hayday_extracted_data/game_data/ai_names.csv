@@ -1,0 +1,98 @@
+Name,InstanceName,SpeciesName
+String,String,String
+Heron3,Frisco,Agami heron
+Donkey2,Arkadasim,Anatolian Donkey
+Donkey3,Marko,Andalusian Donkey
+Horse4,Sari,Andalusian
+Horse6,Arjun,Appaloosa
+Pelican2,Alvin,Australian pelican
+Horse1,Wenla,Bay Horse
+Bunny3,Neza,Black bunny
+Peacock1,Amar,Blue peacock
+Peacock2,Karan,Brown peacock
+Pelican3,Jonatas,Brown pelican
+Cat3,Maluca,Calico Cat
+Kitten2,Emily,Calico Kitten
+Heron1,Henrik,Capped heron
+Pelican1,Visa,Dalmatian pelican
+Bunny2,Vivi,Fluffy Bunny
+Puppy3,Julia,Hound Puppy
+Dog3,Ayush,Hound
+Toucan3,Cian,Keel-billed toucan
+Horse5,Adya,Lipizzaner horse
+Cockatoo2,Juliet,Major Mitchell's cockatoo
+Horse2,Ricky,Palomino
+Puppy2,Diana,Pinscher Puppy
+Dog2,Deniz,Pinscher
+Horse3,Cornelia,Pinto Horse
+Toucan2,Sam,Plate-billed mountain toucan
+Donkey1,Mikki,Provence Donkey
+Puppy1,Eeva,Retriever Puppy
+Dog1,Gruber,Retriever
+Cockatoo3,Ida,Rose-breasted cockatoo
+GuineaPig2,Liangde,Sheba guinea pig
+GuineaPig3,Nadya,Silkie guinea pig
+Cockatoo1,Augustin,Sulphur-crested cockatoo
+Cat2,Tiikeri,Tabby Cat
+Kitten1,Maria,Tabby Kitten
+GuineaPig1,Selwyn,Teddy guinea pig
+Toucan1,Camilla,Toco toucan
+Heron2,Sami,Tricolored heron
+Cat1,Stefan,Tuxedo Cat
+Kitten3,Laura,Tuxedo Kitten
+Bunny1,Vian,White Bunny
+Peacock3,Elise,White peacock
+Flamingo1,Ingeborg,Andean flamingo
+Flamingo2,Ashley,American flamingo
+Flamingo3,Dmitry,Greater flamingo
+Swan1,Maya,Black swan
+Swan2,Veera,Black-necked swan
+Swan3,Marshmallow,Whooper swan
+GiraffeCalf1,Min,Beige giraffe calf
+Giraffe1,Vesa,Beige giraffe
+ArcticFoxCub2,Masa,Brown arctic fox cub
+ArcticFox2,Mika,Brown arctic fox
+GorillaCalf2,Albert,Brown baby gorilla
+ZebraCalf1,Amar,Brown baby zebra
+ElephantCalf2,Henri,Brown elephant calf
+Elephant2,Julie,Brown elephant
+Gorilla2,Marko,Brown gorilla
+HippoCalf2,McHamish,Brown hippo calf
+Hippo1,Jimmy,Brown hippo
+MeerkatPup2,Kasandra,Brown meerkat pup
+Penguin01,Kiran,Brown meerkat pup
+Meerkat2,Charlotte,Brown meerkat
+ReindeerCalf1,Anu,Brown reindeer calf
+Reindeer1,Agnes,Brown reindeer
+WalrusBaby2,Victoria,Brown walrus calf
+Walrus2,Nick,Brown Walrus
+Zebra2,Erik,Cowlick zebra
+GorillaCalf1,Jari,Grey baby gorilla
+ZebraCalf2,Laura,Grey baby zebra
+ElephantCalf1,Marcus,Grey elephant calf
+Elephant1,Pedro,Grey elephant
+HippoCalf1,Sheila,Grey hippo calf
+Hippo2,Danutz,Grey hippo
+ReindeerCalf2,Stephan,Grey reindeer calf
+Reindeer2,Lasse,Grey reindeer
+WalrusBaby1,Chronos,Grey walrus calf
+Walrus1,Ivan,Grey Walrus
+Zebra1,Wes,Mohawk zebra
+CheetahCub2,Ebz,Orange cheetah cub
+Cheetah2,Sophie,Orange cheetah
+MeerkatPup1,Samantha,Red meerkat pup
+Meerkat1,Nadya,Red meerkat
+Gorilla1,James,Silverback gorilla
+ArcticFoxCub1,Eduardo,White arctic fox cub
+ArcticFox1,Ari,White arctic fox
+CheetahCub1,Vivek,Yellow cheetah cub
+Cheetah1,Ilona,Yellow cheetah
+GiraffeCalf2,Teemu,Yellow giraffe calf
+Giraffe2,Jarkko,Yellow giraffe
+Penguin02,Jieming,Gray penguin
+PenguinChick01,Lavinia,Gray penguin chick
+PenguinChick02,Pesto,Blue penguin chick
+Ostrich1,Bex,Gray ostrich
+Ostrich2,Anneli,Brown ostrich
+OstrichChick1,Moritz,Gray ostrich chick
+OstrichChick2,Dennis,Brown ostrich chick

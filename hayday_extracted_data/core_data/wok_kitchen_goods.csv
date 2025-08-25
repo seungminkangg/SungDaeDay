@@ -1,0 +1,16 @@
+Name,ToolIconExportName,TID,ProcessingBuilding,RequirementAmount,Requirement,TimeMin,OrderPrice,OrderExp,ExpCollect,InstantComplete,DumbValue,OrderValue,BoatOrderValue,UnlockLevel,DescriptionTID,Difficulty,PendingRelease
+String,String,String,String,int,String,int,int,int,int,int,int,int,int,int,string,int,Boolean
+Fried rice,recipe_fried_rice,TID_PRODUCT_FRIED_RICE,Wok_Kitchen,5,Egg,60,106,102,24,4,57,39,39,69,TID_WOK_KITCHEN_PRODUCT_DESCRIPTION,43,
+,,,,5,Rice,,,,,,,,,,,,
+Tofu stir fry,recipe_tofu_stir_fry,TID_PRODUCT_TOFU_STIR_FRY,Wok_Kitchen,3,Soybean,75,158,152,37,4,85,58,58,89,TID_WOK_KITCHEN_PRODUCT_DESCRIPTION,62,
+,,,,3,Sesame,,,,,,,,,,,,
+,,,,3,Broccoli,,,,,,,,,,,,
+,,,,3,Onion,,,,,,,,,,,,
+Spicy fish,recipe_spicy_fish,TID_PRODUCT_SPICY_FISH,Wok_Kitchen,1,Fish Meat,90,280,270,65,5,151,106,106,79,TID_WOK_KITCHEN_PRODUCT_DESCRIPTION,111,
+,,,,1,OliveOil,,,,,,,,,,,,
+,,,,5,Garlic,,,,,,,,,,,,
+,,,,3,Chili,,,,,,,,,,,,
+Peanut noodles,recipe_peanut_noodles,TID_PRODUCT_PEANUT_NOODLE,Wok_Kitchen,1,Rice Noodles,45,346,333,80,3,166,57,57,86,TID_WOK_KITCHEN_PRODUCT_DESCRIPTION,60,
+,,,,1,PeanutBag,,,,,,,,,,,,
+,,,,1,Ginger,,,,,,,,,,,,
+,,,,1,SoySauce,,,,,,,,,,,,

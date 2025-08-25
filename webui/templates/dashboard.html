@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - HayDay Dynamic Balancing{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-6 fw-bold text-primary">
+                <i class="fas fa-tractor me-2"></i>HayDay Dynamic Balancing 대시보드
+            </h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" onclick="updateStats()">
+                    <i class="fas fa-sync-alt me-1"></i>새로고침
+                </button>
+                <a href="/api/export-excel" class="btn btn-success">
+                    <i class="fas fa-download me-1"></i>Excel 내보내기
+                </a>
+                <a href="http://localhost:8501" target="_blank" class="btn btn-info">
+                    <i class="fas fa-external-link-alt me-1"></i>Streamlit 대시보드
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 통계 카드들 -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="stat-number" id="total-animals">-</div>
+                <div class="text-muted">동물 종류</div>
+                <i class="fas fa-paw fa-2x text-primary opacity-25 position-absolute" style="top: 1rem; right: 1rem;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="stat-number" id="total-levels">-</div>
+                <div class="text-muted">경험 레벨</div>
+                <i class="fas fa-trophy fa-2x text-warning opacity-25 position-absolute" style="top: 1rem; right: 1rem;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="stat-number" id="production-buildings">-</div>
+                <div class="text-muted">생산 건물</div>
+                <i class="fas fa-industry fa-2x text-info opacity-25 position-absolute" style="top: 1rem; right: 1rem;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="stat-number" id="delivery-patterns">-</div>
+                <div class="text-muted">납품 패턴</div>
+                <i class="fas fa-truck fa-2x text-success opacity-25 position-absolute" style="top: 1rem; right: 1rem;"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 빠른 시뮬레이션 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-play me-2"></i>빠른 시뮬레이션
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">플레이어 레벨</label>
+                        <input type="range" class="form-range" id="quick-level" min="1" max="100" value="20">
+                        <div class="d-flex justify-content-between">
+                            <small>1</small>
+                            <small id="quick-level-value">20</small>
+                            <small>100</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">시뮬레이션 기간</label>
+                        <select class="form-select" id="quick-days">
+                            <option value="7">7일</option>
+                            <option value="14">14일</option>
+                            <option value="30" selected>30일</option>
+                            <option value="60">60일</option>
+                            <option value="90">90일</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary w-100" onclick="runQuickSimulation()">
+                    <i class="fas fa-rocket me-1"></i>시뮬레이션 실행
+                </button>
+                <div id="quick-simulation-status" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 주문 생성 테스트 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-box me-2"></i>주문 생성 테스트
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">어려움 지수</label>
+                        <input type="range" class="form-range" id="struggle-score" min="0" max="100" value="50">
+                        <div class="d-flex justify-content-between">
+                            <small>쉬움 (0)</small>
+                            <small id="struggle-score-value">50</small>
+                            <small>어려움 (100)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">납품 타입</label>
+                        <select class="form-select" id="delivery-type">
+                            <option value="Truck">트럭</option>
+                            <option value="Train">기차</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-warning w-100" onclick="generateTestOrder()">
+                    <i class="fas fa-dice me-1"></i>주문 생성
+                </button>
+                <div id="generated-order" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 최근 시뮬레이션 결과 -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>최근 시뮬레이션 결과
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="simulation-results">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-chart-bar fa-3x mb-3 opacity-25"></i>
+                        <p>시뮬레이션을 실행하면 결과가 여기에 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <p class="text-muted mb-1">마지막 업데이트: <span id="last-updated">-</span></p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="{{ url_for('simulation_page') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-play me-1"></i>고급 시뮬레이션
+                    </a>
+                    <a href="{{ url_for('production_page') }}" class="btn btn-outline-info">
+                        <i class="fas fa-industry me-1"></i>생산 체인 분석
+                    </a>
+                    <a href="{{ url_for('data_page') }}" class="btn btn-outline-success">
+                        <i class="fas fa-database me-1"></i>데이터 탐색
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 슬라이더 값 업데이트
+    document.getElementById('quick-level').addEventListener('input', function() {
+        document.getElementById('quick-level-value').textContent = this.value;
+    });
+    
+    document.getElementById('struggle-score').addEventListener('input', function() {
+        document.getElementById('struggle-score-value').textContent = this.value;
+    });
+
+    // 빠른 시뮬레이션 실행
+    function runQuickSimulation() {
+        const level = document.getElementById('quick-level').value;
+        const days = document.getElementById('quick-days').value;
+        const statusDiv = document.getElementById('quick-simulation-status');
+        
+        statusDiv.innerHTML = `
+            <div class="alert alert-info">
+                <div class="loading me-2"></div>
+                시뮬레이션 실행 중... (${days}일, 레벨 ${level})
+            </div>
+        `;
+        
+        fetch('/api/simulate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                days: parseInt(days),
+                player_level: parseInt(level)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            
+            // 시뮬레이션 상태 모니터링
+            monitorSimulation();
+        })
+        .catch(error => {
+            statusDiv.innerHTML = `<div class="alert alert-danger">오류: ${error.message}</div>`;
+        });
+    }
+    
+    // 시뮬레이션 상태 모니터링
+    function monitorSimulation() {
+        const statusDiv = document.getElementById('quick-simulation-status');
+        
+        const checkStatus = () => {
+            fetch('/api/simulation-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'running') {
+                        setTimeout(checkStatus, 2000);
+                    } else if (data.status === 'completed' && data.results) {
+                        displaySimulationResults(data.results);
+                        statusDiv.innerHTML = `<div class="alert alert-success">시뮬레이션 완료!</div>`;
+                    } else if (data.status === 'error') {
+                        statusDiv.innerHTML = `<div class="alert alert-danger">오류: ${data.error}</div>`;
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = `<div class="alert alert-danger">상태 확인 오류: ${error.message}</div>`;
+                });
+        };
+        
+        checkStatus();
+    }
+    
+    // 시뮬레이션 결과 표시
+    function displaySimulationResults(results) {
+        const resultsDiv = document.getElementById('simulation-results');
+        const avgStruggle = (results.struggle_scores.reduce((a, b) => a + b, 0) / results.struggle_scores.length).toFixed(1);
+        const totalOrders = results.orders_generated.reduce((a, b) => a + b, 0);
+        const totalValue = results.total_values.reduce((a, b) => a + b, 0);
+        
+        resultsDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-3 text-center">
+                    <div class="h3 text-primary">${results.days.length}일</div>
+                    <div class="text-muted">시뮬레이션 기간</div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="h3 text-warning">${avgStruggle}</div>
+                    <div class="text-muted">평균 어려움 지수</div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="h3 text-info">${formatNumber(totalOrders)}</div>
+                    <div class="text-muted">총 주문 수</div>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="h3 text-success">${formatNumber(totalValue)}</div>
+                    <div class="text-muted">총 경제 가치</div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <canvas id="quick-results-chart" width="400" height="100"></canvas>
+            </div>
+        `;
+        
+        // 차트 생성
+        const ctx = document.getElementById('quick-results-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: results.days,
+                datasets: [{
+                    label: '어려움 지수',
+                    data: results.struggle_scores,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }, {
+                    label: '일일 주문 수',
+                    data: results.orders_generated,
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                }
+            }
+        });
+    }
+    
+    // 테스트 주문 생성
+    function generateTestOrder() {
+        const level = document.getElementById('quick-level').value;
+        const struggle = document.getElementById('struggle-score').value;
+        const deliveryType = document.getElementById('delivery-type').value;
+        const orderDiv = document.getElementById('generated-order');
+        
+        orderDiv.innerHTML = `
+            <div class="alert alert-info">
+                <div class="loading me-2"></div>
+                주문 생성 중...
+            </div>
+        `;
+        
+        fetch('/api/generate-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                player_level: parseInt(level),
+                struggle_score: parseFloat(struggle),
+                delivery_type: deliveryType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                orderDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            
+            let itemsList = '';
+            for (const [item, qty] of Object.entries(data.items)) {
+                itemsList += `<li>${item}: <strong>${qty}개</strong></li>`;
+            }
+            
+            orderDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-truck me-1"></i>주문 ID: ${data.order_id}</h6>
+                    <p class="mb-1"><strong>난이도:</strong> ${data.difficulty}</p>
+                    <p class="mb-1"><strong>총 가치:</strong> ${formatNumber(data.total_value)} 코인</p>
+                    <p class="mb-2"><strong>요구 아이템:</strong></p>
+                    <ul class="mb-0">${itemsList}</ul>
+                </div>
+            `;
+        })
+        .catch(error => {
+            orderDiv.innerHTML = `<div class="alert alert-danger">오류: ${error.message}</div>`;
+        });
+    }
+</script>
+{% endblock %}

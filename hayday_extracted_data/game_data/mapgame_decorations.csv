@@ -1,0 +1,133 @@
+Name,FileName,ExportName,Scale,TileWidth,TileHeight
+String,String,String,int,int,int
+tree,sc/nature_new.sc,leafy_big_01,70,1,1
+,,leafy_big_02,100,,
+,,leafy_small_01,100,,
+,,fir_medium_02,100,,
+,,fir_small_01,100,,
+,,fir_medium_01,100,,
+treereg,sc/nature_new.sc,leafy_big_01,70,1,1
+,,leafy_big_02,100,,
+,,leafy_small_01,100,,
+treepine,sc/nature_new.sc,fir_medium_02,100,1,1
+,,fir_small_01,100,,
+,,fir_big_01,100,,
+,,fir_medium_01,100,,
+mapedge,sc/map.sc,mapedge_back,100,1,1
+,,,,,
+bg_flowers,sc/map.sc,bgdetail_plant01_pinkflower,100,1,1
+,,bgdetail_plant02_whiteflower1,100,,
+,,bgdetail_plant02_whiteflower2,100,,
+,,bgdetail_plant02_whiteflower3,100,,
+,,bgdetail_plant06_blueflower,100,,
+bg_shrubs,sc/map.sc,bgdetail_plant03_clovers1,100,1,1
+,,bgdetail_plant03_clovers2,100,,
+,,bgdetail_plant03_clovers3,100,,
+,,bgdetail_plant04_pebbles1,100,,
+,,bgdetail_plant05_weeds01,100,,
+,,bgdetail_plant05_weeds02,100,,
+bg_grass,sc/map.sc,bgdetail_grass01_2x2,100,2,2
+,,bgdetail_grass02_2x2,100,,
+,,bgdetail_grass03_2x2,100,,
+,,bgdetail_grass04_2x2,100,,
+bg_dirt,sc/map.sc,bgdetail_dirt01_2x2,100,2,2
+,,bgdetail_dirt03_2x2,100,,
+deco,sc/decos01_generic.sc,haycart,100,1,1
+,sc/decos01_generic.sc,classic_topiary,100,,
+,sc/decos01_generic.sc,fern,100,,
+,sc/decos04_pathsandfences.sc,fence_roses_red_pole,100,,
+,,,,,
+deco_topiarybush_pink,sc/decos01_generic.sc,topiary_bush_pink,100,1,1
+deco_haybale,sc/decos01_generic.sc,haybale_1,100,1,1
+deco_flowerpatch,sc/decos04_pathsandfences.sc,wildflower_patch_rainbow,120,1,1
+,sc/decos04_pathsandfences.sc,wildflower_patch_blue,120,,
+deco_roundhaybales,sc/decos01_generic.sc,haybale_round,100,2,2
+deco_bulrushbench,sc/map.sc,map_deco_flowerbed_bulrush,100,1,1
+flowers,sc/map.sc,map_deco_plant08_yellowflower,100,1,1
+flowers2x2,sc/map.sc,map_deco_plant10,100,2,2
+shrub,sc/map.sc,map_deco_plant03,100,1,1
+,,,,,
+roaddecos,sc/map.sc,mapdeco_sign01,100,1,1
+,,,,,
+rock,sc/map.sc,map_deco_rock1,100,1,1
+,,map_deco_rock2,100,,
+,,map_deco_rock3,100,,
+,,map_deco_rock4,100,,
+,,map_deco_rocks02,100,,
+rock 1,sc/map.sc,map_deco_rock1,100,1,1
+rock 2,sc/map.sc,map_deco_rock2,100,1,1
+rock 3,sc/map.sc,map_deco_rock3,100,1,1
+rock 4,sc/map.sc,map_deco_rock4,100,1,1
+rock 5,sc/map.sc,map_deco_rocks02,100,1,1
+rock2x2,sc/map.sc,map_deco_cliff3,100,2,2
+,sc/map.sc,map_deco_cliff5,100,,
+,sc/map.sc,map_deco_rockgroup1,100,,
+,sc/map.sc,map_deco_rockgroup2,100,,
+,sc/map.sc,map_deco_rockgroup3,100,,
+,sc/map.sc,map_deco_rockgroup4,100,,
+,sc/nature_new.sc,rock_2x2_01,100,,
+rockgroup 1,sc/map.sc,map_deco_rockgroup1,100,2,2
+rockgroup 2,sc/map.sc,map_deco_rockgroup2,100,2,2
+rockgroup 3,sc/map.sc,map_deco_rockgroup3,100,2,2
+rockgroup 4,sc/map.sc,map_deco_rockgroup4,100,2,2
+rockgroup 5,sc/map.sc,map_deco_cliff3,100,2,2
+rockgroup 6,sc/map.sc,map_deco_cliff5,100,2,2
+rock3x3,sc/map.sc,map_deco_cliff1,100,3,3
+,,map_deco_cliff2,100,,
+,,map_deco_cliff4,100,,
+cliff 1,sc/map.sc,map_deco_cliff1,100,3,3
+cliff 2,sc/map.sc,map_deco_cliff2,100,3,3
+cliff 3,sc/map.sc,map_deco_cliff4,100,3,3
+,,,,,
+field,sc/nature_new.sc,map_crop_watermelon,100,1,1
+,,map_crop_sunflower,100,1,1
+,,map_crop_rice,100,1,1
+,,map_crop_wheat,100,1,1
+field rice,sc/nature_new.sc,map_crop_rice,110,1,1
+field sunflower,sc/nature_new.sc,map_crop_sunflower,110,1,1
+field wheat,sc/nature_new.sc,map_crop_wheat,110,1,1
+field empty,sc/nature_new.sc,map_field_empty,110,1,1
+field watermelon,sc/nature_new.sc,map_crop_watermelon,100,1,1
+bridgefence horiztop,sc/map.sc,bridge_fence_horiz_topedge,100,0,0
+bridgefence horizbottom1,sc/map.sc,bridge_fence_horiz_bottomedge_1,100,2,1
+bridgefence horizbottom2,sc/map.sc,bridge_fence_horiz_bottomedge_2,100,2,1
+bridgefence horizbottom3,sc/map.sc,bridge_fence_horiz_bottomedge_3,100,2,1
+bridgefence horizbottom4,sc/map.sc,bridge_fence_horiz_bottomedge_4,100,2,1
+bridgefence vertop,sc/map.sc,bridge_fence_ver_topedge,100,0,0
+bridgefence verbottom1,sc/map.sc,bridge_fence_ver_bottomedge_1,100,2,2
+bridgefence verbottom2,sc/map.sc,bridge_fence_ver_bottomedge_2,100,2,2
+bridgefence verbottom3,sc/map.sc,bridge_fence_ver_bottomedge_3,100,2,2
+bridgefence verbottom4,sc/map.sc,bridge_fence_ver_bottomedge_4,100,2,2
+waterplant_2x2,sc/map.sc,waterdeco_1x1_waterlilly,100,2,2
+,,waterdeco_1x1_bulrushlilly,100,2,2
+,,waterdeco_2x2_grass,100,2,2
+,,waterdeco_1x1_reedrocks,100,2,2
+,,waterdeco_1x1_smallrock,100,2,2
+,,waterdeco_1x1_waterlillypink,100,2,2
+,,waterdeco_1x1_bulrush,100,2,2
+,,waterdeco_1x1_weed,100,2,2
+,,waterdeco_1x1_waterlillywhite,100,2,2
+,,waterdeco_1x1_waterlilly4,100,2,2
+waterdeco_2x2,sc/map.sc,waterdeco_2x2_log,100,2,2
+,,waterdeco_1x1_rocks,100,2,2
+,,waterdeco_2x2_barrel,100,2,2
+Slowwater_4x2,sc/map.sc,wateranim1_slow_4x2,100,4,2
+Fastwater_4x2,sc/map.sc,wateranim2_fast_4x2,100,4,2
+Slowwater_2x4,sc/map.sc,wateranim1_slow_2x4,100,2,4
+Fastwater_2x4,sc/map.sc,wateranim2_fast_2x4,100,2,4
+water shallowspot,sc/map.sc,wateranim1_shallow_3x3,100,3,3
+,,wateranim2_shallow_3x3,100,3,3
+water swampspot,sc/map.sc,wateranim1_dark_3x3,100,3,3
+,sc/map.sc,wateranim2_dark_3x3,100,3,3
+,sc/map.sc,wateranim3_dark_3x3,100,3,3
+statue,sc/decos03_features.sc,SCID_statue,115,1,1
+field tea,sc/nature_new.sc,map_crop_tea,110,1,1
+Rose_white,sc/decos04_pathsandfences.sc,fence_roses_white_pole,180,1,1
+Horse topiary,sc/decos01_generic.sc,flowerbed_1x1_2,160,1,1
+field pumpkin,sc/nature_new.sc,map_crop_pumpkin,120,1,1
+AcaciaTreeSmall,sc/decos03_features.sc,acacia_tree_small,70,1,1
+PalmTree,sc/decos03_features.sc,palm_tree,70,1,1
+fish_jump_2x4,sc/map.sc,wateranim4_fishjump_2x4,100,2,4
+fish_jump_4x2,sc/map.sc,wateranim4_fishjump_4x2,100,4,2
+fish_jump_2x2,sc/map.sc,wateranim4_fishjump_2x2,100,2,2
+seagull_2x2,sc/map.sc,wateranim4_seagull_2x2,100,2,2

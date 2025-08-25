@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block title %}주문 생성 - HayDay Dynamic Balancing{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 접을 수 있는 사이드바 -->
+        <div class="col-md-3 col-lg-2" id="sidebar">
+            <div class="d-flex flex-column flex-shrink-0 p-3 bg-light" style="height: 100vh;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fs-4">🚜 HayDay</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="sidebarToggle">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">
+                            <i class="fas fa-home me-2"></i>데이터 뷰어
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/order-generator" class="nav-link active" aria-current="page">
+                            <i class="fas fa-dice me-2"></i>주문 생성
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="openStreamlit()">
+                            <i class="fas fa-chart-line me-2"></i>시뮬레이션
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Streamlit 연동 상태 -->
+                <div class="mt-3">
+                    <small class="text-muted">연동 상태</small>
+                    <div id="connectionStatus" class="badge bg-secondary">확인 중...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="col-md-9 col-lg-10" id="mainContent">
+            <div class="container-fluid py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h2">🎯 실시간 주문 생성</h1>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="openStreamlit()">
+                            <i class="fas fa-external-link-alt me-2"></i>Streamlit 열기
+                        </button>
+                        <button class="btn btn-primary" onclick="syncWithStreamlit()">
+                            <i class="fas fa-sync me-2"></i>동기화
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 주문 생성 컨트롤 -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">📊 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="playerLevel" class="form-label">플레이어 레벨</label>
+                                    <input type="range" class="form-range" min="1" max="100" value="20" id="playerLevel">
+                                    <div class="d-flex justify-content-between">
+                                        <small>1</small>
+                                        <span id="levelValue" class="fw-bold">20</span>
+                                        <small>100</small>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="struggleScore" class="form-label">어려움 지수</label>
+                                    <input type="range" class="form-range" min="0" max="100" value="50" id="struggleScore">
+                                    <div class="d-flex justify-content-between">
+                                        <small>쉬움</small>
+                                        <span id="struggleValue" class="fw-bold">50</span>
+                                        <small>어려움</small>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="deliveryType" class="form-label">배송 타입</label>
+                                    <select class="form-select" id="deliveryType">
+                                        <option value="Truck">🚚 트럭</option>
+                                        <option value="Train">🚂 기차</option>
+                                    </select>
+                                </div>
+
+                                <button class="btn btn-primary w-100" onclick="generateOrder()">
+                                    🎲 주문 생성하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <!-- 사용 가능한 아이템 미리보기 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">📋 레벨 <span id="previewLevel">20</span>에서 사용 가능한 아이템</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="availableItems" class="row">
+                                    <div class="text-center text-muted">
+                                        설정을 변경하면 자동으로 업데이트됩니다.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 생성된 주문 결과 -->
+                <div id="orderResult" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">📦 주문 정보</h5>
+                                </div>
+                                <div class="card-body" id="orderInfo">
+                                    <!-- 주문 정보가 여기에 표시됩니다 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">📊 분석</h5>
+                                </div>
+                                <div class="card-body" id="orderAnalysis">
+                                    <!-- 주문 분석이 여기에 표시됩니다 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">🛒 주문 아이템 상세</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped" id="orderItemsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>아이템</th>
+                                                    <th>수량</th>
+                                                    <th>단가</th>
+                                                    <th>소계</th>
+                                                    <th>생산시간</th>
+                                                    <th>언락레벨</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="orderItemsBody">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 전역 변수
+let currentOrder = null;
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    updateConnectionStatus();
+    updateAvailableItems();
+    
+    // 슬라이더 이벤트 리스너
+    document.getElementById('playerLevel').addEventListener('input', function() {
+        document.getElementById('levelValue').textContent = this.value;
+        document.getElementById('previewLevel').textContent = this.value;
+        updateAvailableItems();
+    });
+    
+    document.getElementById('struggleScore').addEventListener('input', function() {
+        document.getElementById('struggleValue').textContent = this.value;
+    });
+    
+    // 사이드바 토글
+    document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+});
+
+// 사이드바 토글 기능
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const icon = toggleBtn.querySelector('i');
+    
+    if (sidebar.style.display === 'none') {
+        sidebar.style.display = 'block';
+        mainContent.className = 'col-md-9 col-lg-10';
+        icon.className = 'fas fa-chevron-left';
+    } else {
+        sidebar.style.display = 'none';
+        mainContent.className = 'col-12';
+        icon.className = 'fas fa-chevron-right';
+    }
+}
+
+// Streamlit 연결 상태 확인
+function updateConnectionStatus() {
+    fetch('/api/streamlit-sync')
+        .then(response => response.json())
+        .then(data => {
+            const status = document.getElementById('connectionStatus');
+            if (data.streamlit_status === 'online') {
+                status.className = 'badge bg-success';
+                status.textContent = '🟢 Streamlit 연결됨';
+            } else {
+                status.className = 'badge bg-warning';
+                status.textContent = '🟡 Streamlit 오프라인';
+            }
+        })
+        .catch(error => {
+            const status = document.getElementById('connectionStatus');
+            status.className = 'badge bg-danger';
+            status.textContent = '🔴 연결 실패';
+        });
+}
+
+// Streamlit 열기
+function openStreamlit() {
+    window.open('http://localhost:8501', '_blank');
+}
+
+// Streamlit과 동기화
+function syncWithStreamlit() {
+    if (currentOrder) {
+        const syncData = {
+            order: currentOrder,
+            timestamp: new Date().toISOString()
+        };
+        
+        fetch('/api/streamlit-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(syncData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            showToast('Streamlit과 동기화 완료!', 'success');
+        })
+        .catch(error => {
+            showToast('동기화 실패', 'error');
+        });
+    } else {
+        showToast('동기화할 주문이 없습니다. 먼저 주문을 생성해주세요.', 'warning');
+    }
+}
+
+// 사용 가능한 아이템 업데이트
+function updateAvailableItems() {
+    const level = document.getElementById('playerLevel').value;
+    
+    // 임시 데이터로 미리보기 표시 (실제로는 API에서 가져와야 함)
+    const container = document.getElementById('availableItems');
+    container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm me-2"></div>로딩 중...</div>';
+    
+    // 실제 구현에서는 API 호출로 대체
+    setTimeout(() => {
+        container.innerHTML = `
+            <div class="text-muted">레벨 ${level}에서 사용 가능한 아이템을 보려면 주문을 생성해보세요.</div>
+        `;
+    }, 500);
+}
+
+// 주문 생성
+function generateOrder() {
+    const level = parseInt(document.getElementById('playerLevel').value);
+    const struggle = parseInt(document.getElementById('struggleScore').value);
+    const delivery = document.getElementById('deliveryType').value;
+    
+    const requestData = {
+        player_level: level,
+        struggle_score: struggle,
+        delivery_type: delivery
+    };
+    
+    // 로딩 표시
+    showToast('주문 생성 중...', 'info');
+    
+    fetch('/api/generate-order-live', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentOrder = data.order;
+            displayOrder(data.order);
+            displayAvailableItems(data.available_items);
+            showToast('주문이 성공적으로 생성되었습니다!', 'success');
+        } else {
+            showToast('주문 생성 실패: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('주문 생성 중 오류가 발생했습니다.', 'error');
+        console.error('Error:', error);
+    });
+}
+
+// 주문 정보 표시
+function displayOrder(order) {
+    document.getElementById('orderResult').style.display = 'block';
+    
+    // 주문 기본 정보
+    document.getElementById('orderInfo').innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <strong>주문 ID:</strong><br>
+                <span class="text-primary">${order.id}</span>
+            </div>
+            <div class="col-6">
+                <strong>배송 타입:</strong><br>
+                <span class="badge bg-info">${order.delivery_type}</span>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-6">
+                <strong>총 가치:</strong><br>
+                <span class="text-success fs-5">${order.total_value.toLocaleString()} 코인</span>
+            </div>
+            <div class="col-6">
+                <strong>난이도:</strong><br>
+                <span class="badge bg-${getDifficultyColor(order.difficulty)}">${order.difficulty}</span>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-6">
+                <strong>요구 레벨:</strong><br>
+                <span>${order.level_requirement}</span>
+            </div>
+            <div class="col-6">
+                <strong>어려움 지수:</strong><br>
+                <span>${order.struggle_score.toFixed(1)}</span>
+            </div>
+        </div>
+    `;
+    
+    // 주문 분석
+    document.getElementById('orderAnalysis').innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <strong>아이템 종류:</strong><br>
+                <span class="fs-5">${order.items.length}</span>
+            </div>
+            <div class="col-6">
+                <strong>총 생산시간:</strong><br>
+                <span class="fs-5">${order.analysis.total_production_time}분</span>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-6">
+                <strong>예상 수익률:</strong><br>
+                <span class="text-${order.analysis.profit_margin > 0 ? 'success' : 'danger'} fs-5">
+                    ${order.analysis.profit_margin.toFixed(1)}%
+                </span>
+            </div>
+            <div class="col-6">
+                <strong>시간당 수익:</strong><br>
+                <span class="text-info fs-5">${order.analysis.efficiency.toFixed(1)} 코인/분</span>
+            </div>
+        </div>
+    `;
+    
+    // 아이템 상세 테이블
+    const tbody = document.getElementById('orderItemsBody');
+    tbody.innerHTML = '';
+    
+    order.items.forEach(item => {
+        const row = `
+            <tr>
+                <td><strong>${item.item}</strong></td>
+                <td>${item.quantity}</td>
+                <td>${item.unit_price.toLocaleString()} 코인</td>
+                <td>${item.total_price.toLocaleString()} 코인</td>
+                <td>${item.production_time}분</td>
+                <td>레벨 ${item.unlock_level}</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+// 사용 가능한 아이템 표시
+function displayAvailableItems(items) {
+    const container = document.getElementById('availableItems');
+    container.innerHTML = '';
+    
+    items.forEach(item => {
+        const itemCard = `
+            <div class="col-md-4 col-lg-3 mb-2">
+                <div class="card card-sm">
+                    <div class="card-body text-center p-2">
+                        <h6 class="card-title mb-1">${item.name}</h6>
+                        <small class="text-muted">
+                            🔓 레벨 ${item.unlock_level}<br>
+                            💰 ${item.price} 코인<br>
+                            ⏰ ${item.production_time}분
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += itemCard;
+    });
+}
+
+// 난이도별 색상 반환
+function getDifficultyColor(difficulty) {
+    switch(difficulty.toLowerCase()) {
+        case 'veryeasy': return 'success';
+        case 'easy': return 'info';
+        case 'normal': return 'warning';
+        case 'hard': return 'danger';
+        case 'veryhard': return 'dark';
+        default: return 'secondary';
+    }
+}
+
+// 토스트 메시지 표시
+function showToast(message, type) {
+    // 간단한 alert로 대체 (실제 구현에서는 Bootstrap Toast 사용)
+    const colors = {
+        'success': '✅',
+        'error': '❌', 
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    };
+    
+    alert(`${colors[type] || ''} ${message}`);
+}
+
+// 정기적으로 연결 상태 확인
+setInterval(updateConnectionStatus, 30000); // 30초마다 확인
+</script>
+
+<style>
+.card-sm .card-body {
+    padding: 0.5rem;
+}
+
+#sidebar {
+    transition: all 0.3s ease;
+}
+
+#mainContent {
+    transition: all 0.3s ease;
+}
+
+.form-range {
+    cursor: pointer;
+}
+
+.table th {
+    border-top: none;
+    background-color: #f8f9fa;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+</style>
+{% endblock %}

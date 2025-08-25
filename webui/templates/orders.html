@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}주문 관리 - HayDay Dynamic Balancing{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-6 fw-bold text-primary mb-4">
+            <i class="fas fa-truck me-2"></i>주문 생성 & 관리
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 주문 생성 설정 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>주문 생성 설정
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">플레이어 레벨</label>
+                    <input type="range" class="form-range" id="player-level" min="1" max="100" value="20">
+                    <div class="d-flex justify-content-between">
+                        <small>1</small>
+                        <small id="level-display">20</small>
+                        <small>100</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">어려움 지수 (Struggle Score)</label>
+                    <input type="range" class="form-range" id="struggle-score" min="0" max="100" value="50">
+                    <div class="d-flex justify-content-between">
+                        <small>쉬움 (0)</small>
+                        <small id="struggle-display">50</small>
+                        <small>어려움 (100)</small>
+                    </div>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        플레이어의 현재 게임 어려움을 나타냅니다.
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">납품 타입</label>
+                    <select class="form-select" id="delivery-type">
+                        <option value="Truck">🚚 트럭 (빠른 납품)</option>
+                        <option value="Train">🚂 기차 (대량 납품)</option>
+                    </select>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-lg" onclick="generateOrder()">
+                        <i class="fas fa-dice me-1"></i>주문 생성
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="generateMultipleOrders()">
+                        <i class="fas fa-list me-1"></i>5개 주문 생성
+                    </button>
+                </div>
+                
+                <div id="generation-status" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 생성된 주문 목록 -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>생성된 주문 목록
+                </h5>
+                <button class="btn btn-outline-danger btn-sm" onclick="clearOrders()">
+                    <i class="fas fa-trash me-1"></i>전체 삭제
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="orders-container">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-clipboard-list fa-4x mb-3 opacity-25"></i>
+                        <h5>생성된 주문이 여기에 표시됩니다</h5>
+                        <p>좌측에서 설정을 조정하고 주문을 생성하세요.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 통계 및 분석 -->
+<div class="row" id="stats-section" style="display: none;">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>주문 통계 분석
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="order-stats">
+                    <!-- 통계 카드들이 동적으로 추가됩니다 -->
+                </div>
+                <div class="row mt-4">
+                    <div class="col-lg-6">
+                        <canvas id="difficulty-pie-chart"></canvas>
+                    </div>
+                    <div class="col-lg-6">
+                        <canvas id="value-distribution-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let generatedOrders = [];
+    
+    // 슬라이더 값 업데이트
+    document.getElementById('player-level').addEventListener('input', function() {
+        document.getElementById('level-display').textContent = this.value;
+    });
+    
+    document.getElementById('struggle-score').addEventListener('input', function() {
+        document.getElementById('struggle-display').textContent = this.value;
+    });
+    
+    // 단일 주문 생성
+    function generateOrder() {
+        const level = parseInt(document.getElementById('player-level').value);
+        const struggle = parseFloat(document.getElementById('struggle-score').value);
+        const deliveryType = document.getElementById('delivery-type').value;
+        const statusDiv = document.getElementById('generation-status');
+        
+        statusDiv.innerHTML = `
+            <div class="alert alert-info">
+                <div class="loading me-2"></div>
+                주문 생성 중...
+            </div>
+        `;
+        
+        fetch('/api/generate-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                player_level: level,
+                struggle_score: struggle,
+                delivery_type: deliveryType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            
+            generatedOrders.unshift(data); // 최신 주문을 맨 위에 추가
+            displayOrders();
+            updateStatistics();
+            statusDiv.innerHTML = `<div class="alert alert-success">주문 생성 완료!</div>`;
+            
+            // 3초 후 메시지 제거
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 3000);
+        })
+        .catch(error => {
+            statusDiv.innerHTML = `<div class="alert alert-danger">오류: ${error.message}</div>`;
+        });
+    }
+    
+    // 다중 주문 생성
+    function generateMultipleOrders() {
+        const statusDiv = document.getElementById('generation-status');
+        statusDiv.innerHTML = `
+            <div class="alert alert-info">
+                <div class="loading me-2"></div>
+                5개 주문 생성 중...
+            </div>
+        `;
+        
+        let completed = 0;
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                generateSingleOrderSilent().then(() => {
+                    completed++;
+                    if (completed === 5) {
+                        statusDiv.innerHTML = `<div class="alert alert-success">5개 주문 생성 완료!</div>`;
+                        setTimeout(() => {
+                            statusDiv.innerHTML = '';
+                        }, 3000);
+                    }
+                });
+            }, i * 200); // 200ms 간격으로 생성
+        }
+    }
+    
+    // 조용한 주문 생성 (상태 메시지 없음)
+    function generateSingleOrderSilent() {
+        const level = parseInt(document.getElementById('player-level').value);
+        const struggle = parseFloat(document.getElementById('struggle-score').value);
+        const deliveryType = document.getElementById('delivery-type').value;
+        
+        return fetch('/api/generate-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                player_level: level,
+                struggle_score: struggle,
+                delivery_type: deliveryType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.error) {
+                generatedOrders.unshift(data);
+                displayOrders();
+                updateStatistics();
+            }
+        })
+        .catch(error => console.error('Order generation error:', error));
+    }
+    
+    // 주문 목록 표시
+    function displayOrders() {
+        const container = document.getElementById('orders-container');
+        
+        if (generatedOrders.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-clipboard-list fa-4x mb-3 opacity-25"></i>
+                    <h5>생성된 주문이 여기에 표시됩니다</h5>
+                    <p>좌측에서 설정을 조정하고 주문을 생성하세요.</p>
+                </div>
+            `;
+            document.getElementById('stats-section').style.display = 'none';
+            return;
+        }
+        
+        let html = '';
+        generatedOrders.forEach((order, index) => {
+            const difficultyColor = {
+                'VeryEasy': 'success',
+                'Easy': 'info',
+                'Normal': 'warning',
+                'Hard': 'danger',
+                'VeryHard': 'dark'
+            }[order.difficulty] || 'secondary';
+            
+            const deliveryIcon = order.delivery_type === 'Truck' ? '🚚' : '🚂';
+            
+            let itemsList = '';
+            for (const [item, qty] of Object.entries(order.items)) {
+                itemsList += `<li><strong>${item}</strong>: ${qty}개</li>`;
+            }
+            
+            html += `
+                <div class="card mb-3" style="border-left: 5px solid var(--bs-${difficultyColor});">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="card-title">
+                                ${deliveryIcon} ${order.order_id}
+                                <span class="badge bg-${difficultyColor} ms-2">${order.difficulty}</span>
+                            </h6>
+                            <button class="btn btn-outline-danger btn-sm" onclick="removeOrder(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <p class="card-text">
+                                    <strong>요구 아이템:</strong>
+                                    <ul class="mt-1 mb-0">${itemsList}</ul>
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="text-muted small">총 가치</div>
+                                <div class="h5 text-success">${formatNumber(order.total_value)} 코인</div>
+                                <div class="text-muted small">어려움 지수: ${order.struggle_score.toFixed(1)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        document.getElementById('stats-section').style.display = 'block';
+    }
+    
+    // 주문 제거
+    function removeOrder(index) {
+        generatedOrders.splice(index, 1);
+        displayOrders();
+        updateStatistics();
+    }
+    
+    // 전체 주문 삭제
+    function clearOrders() {
+        if (confirm('모든 주문을 삭제하시겠습니까?')) {
+            generatedOrders = [];
+            displayOrders();
+        }
+    }
+    
+    // 통계 업데이트
+    function updateStatistics() {
+        if (generatedOrders.length === 0) return;
+        
+        // 기본 통계
+        const totalValue = generatedOrders.reduce((sum, order) => sum + order.total_value, 0);
+        const avgValue = totalValue / generatedOrders.length;
+        const avgStruggle = generatedOrders.reduce((sum, order) => sum + order.struggle_score, 0) / generatedOrders.length;
+        
+        // 난이도별 분포
+        const difficultyCount = {};
+        generatedOrders.forEach(order => {
+            difficultyCount[order.difficulty] = (difficultyCount[order.difficulty] || 0) + 1;
+        });
+        
+        // 통계 카드 업데이트
+        document.getElementById('order-stats').innerHTML = `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <div class="stat-number">${generatedOrders.length}</div>
+                        <div class="text-muted">총 주문 수</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <div class="stat-number">${formatNumber(Math.round(avgValue))}</div>
+                        <div class="text-muted">평균 가치</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <div class="stat-number">${formatNumber(totalValue)}</div>
+                        <div class="text-muted">총 가치</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <div class="stat-number">${avgStruggle.toFixed(1)}</div>
+                        <div class="text-muted">평균 어려움</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 차트 업데이트
+        updateCharts(difficultyCount);
+    }
+    
+    // 차트 업데이트
+    function updateCharts(difficultyCount) {
+        // 난이도 분포 파이 차트
+        const difficultyCtx = document.getElementById('difficulty-pie-chart').getContext('2d');
+        new Chart(difficultyCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(difficultyCount),
+                datasets: [{
+                    data: Object.values(difficultyCount),
+                    backgroundColor: [
+                        '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '난이도 분포'
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // 가치 분포 차트
+        const values = generatedOrders.map(order => order.total_value);
+        const valueRanges = { '0-1K': 0, '1K-5K': 0, '5K-10K': 0, '10K+': 0 };
+        
+        values.forEach(value => {
+            if (value < 1000) valueRanges['0-1K']++;
+            else if (value < 5000) valueRanges['1K-5K']++;
+            else if (value < 10000) valueRanges['5K-10K']++;
+            else valueRanges['10K+']++;
+        });
+        
+        const valueCtx = document.getElementById('value-distribution-chart').getContext('2d');
+        new Chart(valueCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(valueRanges),
+                datasets: [{
+                    label: '주문 수',
+                    data: Object.values(valueRanges),
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '가치 분포'
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '주문 수'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '가치 범위 (코인)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

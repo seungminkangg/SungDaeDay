@@ -1,0 +1,14 @@
+Name,ToolIconExportName,TID,ProcessingBuilding,RequirementAmount,Requirement,TimeMin,OrderPrice,OrderExp,ExpCollect,InstantComplete,DumbValue,OrderValue,BoatOrderValue,UnlockLevel,DescriptionTID,Difficulty,PendingRelease
+String,String,String,String,int,String,int,int,int,int,int,int,int,int,int,string,int,Boolean
+Plain Yoghurt,recipe_yoghurt_plain,TID_PLAIN_YOGHURT,Yoghurt_Maker,2,Cream,120,120,116,28,5,65,39,39,103,TID_YOGURT_MAKER_PRODUCT_DESCRIPTION,44,
+,,,,3,Milk,,,,,,,,,,,,
+Strawberry Yoghurt,recipe_yoghurt_strawberry,TID_STRAWBERRY_YOGHURT,Yoghurt_Maker,1,Plain Yoghurt,40,272,262,63,3,147,81,81,105,TID_YOGURT_MAKER_PRODUCT_DESCRIPTION,84,
+,,,,1,Strawberry Jam,,,,,,,,,,,,
+Tropical Yoghurt,recipe_yoghurt_tropical,TID_TROPICAL_YOGHURT,Yoghurt_Maker,1,Plain Yoghurt,60,235,226,54,4,127,83,83,109,TID_YOGURT_MAKER_PRODUCT_DESCRIPTION,87,
+,,,,4,Raspberry,,,,,,,,,,,,
+,,,,2,Mango,,,,,,,,,,,,
+,,,,1,PassionFruit,,,,,,,,,,,,
+Breakfast Bowl,recipe_yoghurt_breakfast,TID_BREAKFAST_BOWL,Yoghurt_Maker,1,Plain Yoghurt,50,312,300,72,3,168,86,86,119,TID_YOGURT_MAKER_PRODUCT_DESCRIPTION,89,
+,,,,4,Oats,,,,,,,,,,,,
+,,,,1,Honey,,,,,,,,,,,,
+,,,,2,Blackberry,,,,,,,,,,,,

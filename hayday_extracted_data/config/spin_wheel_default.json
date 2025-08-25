@@ -1,0 +1,272 @@
+{
+    "Monday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3,
+            "minAmount": 1,
+            "maxAmount": 2
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11,
+            "minAmount": 3,
+            "maxAmount": 5
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Tuesday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Wednesday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Thursday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 4
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Friday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Saturday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    },
+    "Sunday": {
+        "HighValue": {
+            "minItems": 3,
+            "maxItems": 3
+        },
+        "Boosters": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "Vouchers": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "CollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "PuzzlePieces": {
+            "minItems": 0,
+            "maxItems": 0
+        },
+        "Tools": {
+            "minItems": 0,
+            "maxItems": 1
+        },
+        "LowValue": {
+            "minItems": 0,
+            "maxItems": 11
+        },
+        "Decos": {
+            "minItems": 1,
+            "maxItems": 1
+        },
+        "LimitedCollectionTools": {
+            "minItems": 0,
+            "maxItems": 1
+        }
+    }
+}
