@@ -31,17 +31,88 @@
                     </div>
                 </div>
                 
+                <!-- 고급 파라미터 시스템 -->
                 <div class="mb-3">
-                    <label class="form-label">어려움 지수 (Struggle Score)</label>
-                    <input type="range" class="form-range" id="struggle-score" min="0" max="100" value="50">
-                    <div class="d-flex justify-content-between">
-                        <small>쉬움 (0)</small>
-                        <small id="struggle-display">50</small>
-                        <small>어려움 (100)</small>
+                    <div class="d-flex align-items-center mb-2">
+                        <label class="form-label mb-0 me-2">🎲 시뮬레이션 모드</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="advanced-mode" onchange="toggleAdvancedMode()">
+                            <label class="form-check-label" for="advanced-mode">고급 설정</label>
+                        </div>
                     </div>
-                    <div class="form-text">
-                        <i class="fas fa-info-circle me-1"></i>
-                        플레이어의 현재 게임 어려움을 나타냅니다.
+                    
+                    <!-- 기본 모드 (랜덤) -->
+                    <div id="basic-mode" class="p-3 border rounded bg-light">
+                        <div class="text-center">
+                            <i class="fas fa-dice-d20 text-primary fa-2x mb-2"></i>
+                            <h6 class="text-primary">자동 시뮬레이션</h6>
+                            <p class="text-muted mb-0">모든 파라미터가 실제 HayDay처럼 자동으로 생성됩니다</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 고급 모드 (수동) -->
+                    <div id="advanced-controls" style="display: none;">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">어려움 지수</label>
+                                <input type="range" class="form-range" id="struggle-score" min="0" max="100" value="50">
+                                <div class="d-flex justify-content-between">
+                                    <small>쉬움 (0)</small>
+                                    <small id="struggle-display">50</small>
+                                    <small>어려움 (100)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">가치 배율</label>
+                                <input type="range" class="form-range" id="value-multiplier" min="0.5" max="3.0" step="0.1" value="1.0">
+                                <div class="d-flex justify-content-between">
+                                    <small>50%</small>
+                                    <small id="value-display">100%</small>
+                                    <small>300%</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">특별 주문 확률 (%)</label>
+                                <input type="range" class="form-range" id="special-probability" min="0" max="50" value="10">
+                                <div class="d-flex justify-content-between">
+                                    <small>없음</small>
+                                    <small id="special-display">10%</small>
+                                    <small>50%</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">아이템 수 보너스</label>
+                                <select class="form-select" id="item-bonus">
+                                    <option value="0">기본</option>
+                                    <option value="1">+1개</option>
+                                    <option value="2">+2개</option>
+                                    <option value="-1">-1개</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 프리셋 시스템 -->
+                        <div class="mt-3 pt-3 border-top">
+                            <div class="row align-items-end">
+                                <div class="col-md-6">
+                                    <label class="form-label">프리셋 이름</label>
+                                    <input type="text" class="form-control" id="preset-name" placeholder="예: 고난이도 테스트">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="savePreset()">
+                                            <i class="fas fa-save me-1"></i>저장
+                                        </button>
+                                        <select class="form-select form-select-sm" id="preset-select" onchange="loadPreset()">
+                                            <option value="">프리셋 선택...</option>
+                                        </select>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deletePreset()">
+                                            <i class="fas fa-trash me-1"></i>삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -50,6 +121,7 @@
                     <select class="form-select" id="delivery-type">
                         <option value="Truck">🚚 트럭 (빠른 납품)</option>
                         <option value="Train">🚂 기차 (대량 납품)</option>
+                        <option value="Boat">⛵ 보트 (고가치 납품)</option>
                     </select>
                 </div>
                 
@@ -131,12 +203,50 @@
         document.getElementById('struggle-display').textContent = this.value;
     });
     
+    document.getElementById('value-multiplier').addEventListener('input', function() {
+        document.getElementById('value-display').textContent = (this.value * 100) + '%';
+    });
+    
+    document.getElementById('special-probability').addEventListener('input', function() {
+        document.getElementById('special-display').textContent = this.value + '%';
+    });
+    
+    // 고급 모드 토글 
+    function toggleAdvancedMode() {
+        const isAdvanced = document.getElementById('advanced-mode').checked;
+        document.getElementById('basic-mode').style.display = isAdvanced ? 'none' : 'block';
+        document.getElementById('advanced-controls').style.display = isAdvanced ? 'block' : 'none';
+        
+        // 프리셋 로드
+        if (isAdvanced) {
+            loadPresetList();
+        }
+    }
+    
     // 단일 주문 생성
     function generateOrder() {
         const level = parseInt(document.getElementById('player-level').value);
-        const struggle = parseFloat(document.getElementById('struggle-score').value);
         const deliveryType = document.getElementById('delivery-type').value;
         const statusDiv = document.getElementById('generation-status');
+        const isAdvanced = document.getElementById('advanced-mode').checked;
+        
+        // 고급 모드에서 파라미터 수집
+        let requestData = {
+            player_level: level,
+            delivery_type: deliveryType
+        };
+        
+        if (isAdvanced) {
+            // 수동 파라미터들
+            requestData.struggle_score = parseFloat(document.getElementById('struggle-score').value);
+            requestData.value_multiplier = parseFloat(document.getElementById('value-multiplier').value);
+            requestData.special_probability = parseInt(document.getElementById('special-probability').value);
+            requestData.item_bonus = parseInt(document.getElementById('item-bonus').value);
+            requestData.manual_mode = true;
+        } else {
+            // 자동 모드 - 랜덤 생성
+            requestData.manual_mode = false;
+        }
         
         statusDiv.innerHTML = `
             <div class="alert alert-info">
@@ -148,11 +258,7 @@
         fetch('/api/generate-order', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                player_level: level,
-                struggle_score: struggle,
-                delivery_type: deliveryType
-            })
+            body: JSON.stringify(requestData)
         })
         .then(response => response.json())
         .then(data => {
@@ -205,17 +311,31 @@
     // 조용한 주문 생성 (상태 메시지 없음)
     function generateSingleOrderSilent() {
         const level = parseInt(document.getElementById('player-level').value);
-        const struggle = parseFloat(document.getElementById('struggle-score').value);
         const deliveryType = document.getElementById('delivery-type').value;
+        const isAdvanced = document.getElementById('advanced-mode').checked;
+        
+        // 고급 모드에서 파라미터 수집
+        let requestData = {
+            player_level: level,
+            delivery_type: deliveryType
+        };
+        
+        if (isAdvanced) {
+            // 수동 파라미터들
+            requestData.struggle_score = parseFloat(document.getElementById('struggle-score').value);
+            requestData.value_multiplier = parseFloat(document.getElementById('value-multiplier').value);
+            requestData.special_probability = parseInt(document.getElementById('special-probability').value);
+            requestData.item_bonus = parseInt(document.getElementById('item-bonus').value);
+            requestData.manual_mode = true;
+        } else {
+            // 자동 모드 - 랜덤 생성
+            requestData.manual_mode = false;
+        }
         
         return fetch('/api/generate-order', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                player_level: level,
-                struggle_score: struggle,
-                delivery_type: deliveryType
-            })
+            body: JSON.stringify(requestData)
         })
         .then(response => response.json())
         .then(data => {
@@ -284,9 +404,6 @@
                                 <div class="text-muted small">총 가치</div>
                                 <div class="h5 text-success">${formatNumber(order.total_value)} 코인</div>
                                 <div class="text-muted small">어려움 지수: ${order.struggle_score.toFixed(1)}</div>
-                                <div class="text-info small mt-2">
-                                    <i class="fas fa-clock"></i> 평균 생산시간: ${order.avg_production_time || 0}분
-                                </div>
                                 <div class="text-warning small">
                                     <i class="fas fa-hourglass-half"></i> 총 생산시간: ${order.total_production_time || 0}분
                                 </div>
@@ -453,5 +570,246 @@
             }
         });
     }
+    
+    // 프리셋 기능들
+    function loadPresetList() {
+        const presets = JSON.parse(localStorage.getItem('orderPresets') || '{}');
+        const select = document.getElementById('preset-select');
+        select.innerHTML = '<option value="">프리셋 선택...</option>';
+        
+        for (const name in presets) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        }
+    }
+    
+    function savePreset() {
+        const name = document.getElementById('preset-name').value.trim();
+        if (!name) {
+            alert('프리셋 이름을 입력하세요.');
+            return;
+        }
+        
+        const preset = {
+            struggle_score: document.getElementById('struggle-score').value,
+            value_multiplier: document.getElementById('value-multiplier').value,
+            special_probability: document.getElementById('special-probability').value,
+            item_bonus: document.getElementById('item-bonus').value
+        };
+        
+        const presets = JSON.parse(localStorage.getItem('orderPresets') || '{}');
+        presets[name] = preset;
+        localStorage.setItem('orderPresets', JSON.stringify(presets));
+        
+        document.getElementById('preset-name').value = '';
+        loadPresetList();
+        alert('프리셋이 저장되었습니다!');
+    }
+    
+    function loadPreset() {
+        const name = document.getElementById('preset-select').value;
+        if (!name) return;
+        
+        const presets = JSON.parse(localStorage.getItem('orderPresets') || '{}');
+        const preset = presets[name];
+        if (!preset) return;
+        
+        document.getElementById('struggle-score').value = preset.struggle_score;
+        document.getElementById('struggle-display').textContent = preset.struggle_score;
+        document.getElementById('value-multiplier').value = preset.value_multiplier;
+        document.getElementById('value-display').textContent = (preset.value_multiplier * 100) + '%';
+        document.getElementById('special-probability').value = preset.special_probability;
+        document.getElementById('special-display').textContent = preset.special_probability + '%';
+        document.getElementById('item-bonus').value = preset.item_bonus;
+    }
+    
+    function deletePreset() {
+        const name = document.getElementById('preset-select').value;
+        if (!name) {
+            alert('삭제할 프리셋을 선택하세요.');
+            return;
+        }
+        
+        if (confirm(`'${name}' 프리셋을 삭제하시겠습니까?`)) {
+            const presets = JSON.parse(localStorage.getItem('orderPresets') || '{}');
+            delete presets[name];
+            localStorage.setItem('orderPresets', JSON.stringify(presets));
+            loadPresetList();
+            alert('프리셋이 삭제되었습니다.');
+        }
+    }
+    
+    // 진짜 도마뱀처럼 기어다니는 애니메이션 
+    function createLizard() {
+        const lizard = document.createElement('div');
+        lizard.className = 'crawling-lizard';
+        lizard.innerHTML = '🦎';
+        lizard.style.cssText = `
+            position: fixed;
+            font-size: 60px;
+            z-index: 9999;
+            pointer-events: all;
+            cursor: pointer;
+            opacity: 0.9;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+            user-select: none;
+        `;
+        
+        // 랜덤 시작 위치
+        let currentX = Math.random() * (window.innerWidth - 60);
+        let currentY = Math.random() * (window.innerHeight - 60);
+        lizard.style.left = currentX + 'px';
+        lizard.style.top = currentY + 'px';
+        
+        document.body.appendChild(lizard);
+        
+        let isExploded = false;
+        let moveTimeout;
+        
+        // 폭발 효과
+        function explodeLizard(event) {
+            if (isExploded) return;
+            isExploded = true;
+            clearTimeout(moveTimeout);
+            
+            const rect = lizard.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            // 폭발 파티클 생성
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.style.cssText = `
+                    position: fixed;
+                    width: 6px;
+                    height: 6px;
+                    background: ${['#ff6b35', '#f7931e', '#ffdc00', '#c5d86d', '#00a8cc'][Math.floor(Math.random() * 5)]};
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 10000;
+                    left: ${centerX}px;
+                    top: ${centerY}px;
+                `;
+                
+                document.body.appendChild(particle);
+                
+                // 파티클 폭발 애니메이션
+                const angle = (Math.PI * 2 * i) / 20;
+                const velocity = 50 + Math.random() * 100;
+                const deltaX = Math.cos(angle) * velocity;
+                const deltaY = Math.sin(angle) * velocity;
+                
+                particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${deltaX}px, ${deltaY}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 800 + Math.random() * 400,
+                    easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    fill: 'forwards'
+                }).addEventListener('finish', () => particle.remove());
+            }
+            
+            // 도마뱀 폭발 애니메이션
+            lizard.animate([
+                { transform: 'scale(1) rotate(0deg)', opacity: 1 },
+                { transform: 'scale(2) rotate(180deg)', opacity: 0 }
+            ], {
+                duration: 300,
+                easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+                fill: 'forwards'
+            }).addEventListener('finish', () => {
+                lizard.style.display = 'none';
+                
+                // 10초 후 부활
+                setTimeout(() => {
+                    if (lizard.parentNode) {
+                        lizard.style.display = 'block';
+                        lizard.style.transform = 'scale(1) rotate(0deg)';
+                        lizard.style.opacity = '0.9';
+                        isExploded = false;
+                        crawlLizard();
+                    }
+                }, 10000);
+            });
+        }
+        
+        // 진짜 도마뱀처럼 기어다니기
+        function crawlLizard() {
+            if (isExploded) return;
+            
+            const targetX = Math.random() * (window.innerWidth - 60);
+            const targetY = Math.random() * (window.innerHeight - 60);
+            
+            const deltaX = targetX - currentX;
+            const deltaY = targetY - currentY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const duration = Math.max(2000, distance * 3); // 거리에 비례한 시간
+            
+            // 방향에 따른 회전
+            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+            
+            // 진짜 도마뱀처럼 구불구불 기어다니는 애니메이션
+            lizard.animate([
+                { 
+                    left: currentX + 'px', 
+                    top: currentY + 'px', 
+                    transform: `rotate(${angle}deg) scaleX(1)` 
+                },
+                { 
+                    left: currentX + deltaX * 0.3 + 'px', 
+                    top: currentY + deltaY * 0.3 + 'px', 
+                    transform: `rotate(${angle + 5}deg) scaleX(1.1)` 
+                },
+                { 
+                    left: currentX + deltaX * 0.7 + 'px', 
+                    top: currentY + deltaY * 0.7 + 'px', 
+                    transform: `rotate(${angle - 5}deg) scaleX(0.9)` 
+                },
+                { 
+                    left: targetX + 'px', 
+                    top: targetY + 'px', 
+                    transform: `rotate(${angle}deg) scaleX(1)` 
+                }
+            ], {
+                duration: duration,
+                easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)', // 자연스러운 동물 움직임
+                fill: 'forwards'
+            }).addEventListener('finish', () => {
+                currentX = targetX;
+                currentY = targetY;
+                
+                // 잠시 멈춤 (실제 도마뱀처럼)
+                moveTimeout = setTimeout(crawlLizard, 1000 + Math.random() * 2000);
+            });
+        }
+        
+        // 클릭 이벤트
+        lizard.addEventListener('click', explodeLizard);
+        
+        // 첫 움직임 시작
+        setTimeout(crawlLizard, 500);
+        
+        // 5분 후 제거
+        setTimeout(() => {
+            if (lizard.parentNode) {
+                lizard.remove();
+            }
+        }, 300000);
+    }
+    
+    // 페이지 로드시 도마뱀 생성
+    document.addEventListener('DOMContentLoaded', function() {
+        // 10초 후 첫 도마뱀
+        setTimeout(createLizard, 10000);
+        
+        // 이후 2-5분마다 랜덤하게 생성
+        setInterval(() => {
+            if (Math.random() < 0.3) {
+                createLizard();
+            }
+        }, 120000); // 2분마다 체크
+    });
 </script>
 {% endblock %}

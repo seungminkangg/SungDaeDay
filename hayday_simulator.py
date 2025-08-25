@@ -25,6 +25,7 @@ DATA_PATH = os.path.join(os.path.dirname(__file__), "hayday_extracted_data", "co
 class DeliveryType(Enum):
     TRUCK = "Truck"
     TRAIN = "Train"
+    BOAT = "Boat"
 
 class DifficultyType(Enum):
     VERY_EASY = "VeryEasy"
@@ -58,7 +59,6 @@ class DeliveryOrder:
     difficulty: DifficultyType
     struggle_score: float
     level_requirement: int
-    avg_production_time: int = 0  # Average 생산 시간 (분)
     total_production_time: int = 0  # Total 생산 시간 (분)
     expiry_time: int = 60  # 만료 시간 (분)
 
@@ -146,13 +146,17 @@ class HayDaySimulator:
                 self.predefined_orders = pd.read_csv(f"{DATA_PATH}/predefined_orders.csv")
                 self.exp_levels = pd.read_csv(f"{DATA_PATH}/exp_levels.csv")
                 
+                # 건물 언락 레벨 데이터 로드
+                self.processing_buildings = pd.read_csv(f"{DATA_PATH}/processing_buildings.csv")
+                
                 # 데이터 타입 행 제거 (HayDay 데이터 형식)
-                for df_name in ['orders', 'predefined_orders', 'exp_levels']:
+                for df_name in ['orders', 'predefined_orders', 'exp_levels', 'processing_buildings']:
                     df = getattr(self, df_name)
                     if len(df) > 1 and df.iloc[0].astype(str).str.contains('int|String|Boolean|float', na=False).any():
                         setattr(self, df_name, df.drop(0).reset_index(drop=True))
                 
                 print("HayDay order system data loading completed!")
+                print(f"Loaded processing buildings data: {len(self.processing_buildings)} buildings")
                 
             except Exception as e:
                 print(f"Warning: HayDay order data loading failed: {e}")
@@ -160,6 +164,7 @@ class HayDaySimulator:
                 self.orders = pd.DataFrame()
                 self.predefined_orders = pd.DataFrame() 
                 self.exp_levels = pd.DataFrame()
+                self.processing_buildings = pd.DataFrame()
             
             print("Data loading completed!")
             
@@ -293,7 +298,6 @@ class HayDaySimulator:
             difficulty=difficulty,
             struggle_score=struggle_score,
             level_requirement=player_level,
-            avg_production_time=int(avg_time),
             total_production_time=total_time
         )
     
@@ -370,24 +374,89 @@ class HayDaySimulator:
                                delivery_type: DeliveryType, level_data) -> DeliveryOrder:
         """Dynamic 주문 생성 (HayDay 레벨 데이터 기반)"""
         try:
-            # 레벨 데이터에서 주문 매개변수 추출
+            # 레벨 데이터에서 주문 매개변수 추출 (실제 HayDay CSV 데이터 완전 활용)
             min_goods = int(level_data.get('MinGoodsInOrderDelivery', 1))
             max_goods = int(level_data.get('MaxGoodsInOrderDelivery', 3))
             min_value = int(level_data.get('OrderMinValue', 100))
             max_value = int(level_data.get('OrderMaxValue', 600))
+            max_order_count = int(level_data.get('MaxOrderCount', 1))
+            truck_coin_multiplier = int(level_data.get('TruckCoinMultiplier', 100))
+            truck_exp_multiplier = int(level_data.get('TruckEXPMultiplier', 100))
+            order_cancel_time = int(level_data.get('OrderCancelTimeMin', 6))
             
-            # 어려움 지수에 따른 난이도 조절 (높은 지수 = 어려운 주문)
+            # 특별 주문 시스템 (CSV 데이터 기반)
+            special_order_probability = int(level_data.get('SpecialOrderProbablity', 0))  # 오타: Probablity
+            special_order_max_count = int(level_data.get('SpecialOrderMaxCount', 0))
+            
+            # 보트 전용 크레이트 시스템
+            min_crate_amount = int(level_data.get('MinCrateAmountInBoatOrder', 1))
+            max_crate_amount = int(level_data.get('MaxCrateAmountInBoatOrder', 1))
+            boat_coin_multiplier = int(level_data.get('BoatCrateCoinMultiplier', 100))
+            boat_exp_multiplier = int(level_data.get('BoatCrateEXPMultiplier', 100))
+            
+            # 실제 HayDay 스타일: 납품 타입별 아이템 수 조정
+            if delivery_type == DeliveryType.TRAIN:
+                # Train: 3-5개 (5칸 기차)
+                if player_level <= 20:
+                    base_min_items = 3
+                    base_max_items = 4
+                elif player_level <= 40:
+                    base_min_items = 3
+                    base_max_items = 5
+                else:
+                    base_min_items = 4
+                    base_max_items = 5
+            elif delivery_type == DeliveryType.BOAT:
+                # Boat 언락레벨 체크 (HayDay에서는 레벨 17에서 언락)
+                if player_level < 17:
+                    # 보트가 언락되지 않았으면 Truck으로 변경
+                    delivery_type = DeliveryType.TRUCK
+                    base_min_items = 1 if player_level <= 10 else 2
+                    base_max_items = 2 if player_level <= 10 else 3
+                else:
+                    # Boat: CSV 데이터 기반 (MinGoodTypesInBoatOrder / MaxGoodTypesInBoatOrder)
+                    base_min_items = int(level_data.get('MinGoodTypesInBoatOrder', 3))
+                    base_max_items = int(level_data.get('MaxGoodTypesInBoatOrder', 3))
+                    # 보트는 일반적으로 더 많은 아이템 요구
+                    if base_max_items < 4:
+                        base_max_items = min(6, base_min_items + 2)
+            else:  # Truck
+                # Truck: 레벨에 따라 1-6개까지 점진적 증가
+                if player_level <= 10:
+                    base_min_items = 1
+                    base_max_items = 2
+                elif player_level <= 20:
+                    base_min_items = 2
+                    base_max_items = 3
+                elif player_level <= 40:
+                    base_min_items = 2
+                    base_max_items = 4
+                elif player_level <= 60:
+                    base_min_items = 3
+                    base_max_items = 5
+                else:
+                    base_min_items = 3
+                    base_max_items = 6
+            
+            # 보트 전용 가치 범위 적용 (CSV 데이터 기반)
+            if delivery_type == DeliveryType.BOAT:
+                boat_min_value = int(level_data.get('MinBoatOrderValue', min_value))
+                boat_max_value = int(level_data.get('MaxBoatOrderValue', max_value))
+                min_value = boat_min_value
+                max_value = boat_max_value
+                
+            # 어려움 지수에 따른 난이도 조절 (실제 CSV 데이터 기반)
             if struggle_score < 30:  # 낮은 어려움 = 쉬운 주문
-                num_items = min_goods
-                target_value = min_value
+                num_items = base_min_items
+                target_value = min_value + int((max_value - min_value) * 0.1)  # 하위 10-30% 가치
                 difficulty = DifficultyType.EASY
             elif struggle_score < 60:  # 중간 어려움
-                num_items = min(max_goods, min_goods + 1) 
-                target_value = (min_value + max_value) // 2
+                num_items = min(base_max_items, base_min_items + 1) 
+                target_value = min_value + int((max_value - min_value) * 0.5)  # 중간 가치
                 difficulty = DifficultyType.NORMAL
             else:  # 높은 어려움 = 어려운 주문
-                num_items = max_goods
-                target_value = max_value
+                num_items = base_max_items
+                target_value = min_value + int((max_value - min_value) * 0.8)  # 상위 80% 가치
                 difficulty = DifficultyType.HARD
             
             # 이용 가능한 아이템 풀 생성 (플레이어 레벨 기준)
@@ -456,9 +525,25 @@ class HayDaySimulator:
             selected_items = list(set(selected_items))[:num_items]
             
             for item in selected_items:
-                base_amount = max(1, target_value // (len(selected_items) * 50))  # 대략적인 아이템당 가치
-                amount = max(1, base_amount + np.random.randint(-base_amount//2, base_amount//2 + 1))
-                items[item] = amount
+                # HayDay 스타일 수량: 아이템 가치에 따라 적절한 수량 계산
+                item_value = self._get_item_value(item)
+                
+                if item_value <= 10:  # 저가 아이템 (밀, 옥수수 등)
+                    amount = random.randint(3, 12)
+                elif item_value <= 50:  # 중가 아이템 (빵, 버터 등)  
+                    amount = random.randint(2, 8)
+                elif item_value <= 100:  # 고가 아이템 (케이크, 의류 등)
+                    amount = random.randint(1, 5)
+                else:  # 최고가 아이템 (보석, 고급 제품 등)
+                    amount = random.randint(1, 3)
+                
+                # 난이도에 따른 수량 조정
+                if difficulty == DifficultyType.EASY:
+                    amount = max(1, int(amount * 0.7))
+                elif difficulty == DifficultyType.HARD:
+                    amount = int(amount * 1.3)
+                
+                items[item] = max(1, amount)
             
             # 실제 주문 가치 및 생산 시간 계산
             actual_value = 0
@@ -485,8 +570,7 @@ class HayDaySimulator:
                 difficulty=difficulty,
                 struggle_score=struggle_score,
                 level_requirement=player_level,
-                avg_production_time=int(avg_time),
-                total_production_time=total_time,
+                    total_production_time=total_time,
                 expiry_time=60
             )
             
@@ -582,14 +666,24 @@ class HayDaySimulator:
             # 모든 _goods로 끝나는 생산 건물 데이터
             elif key.endswith('_goods'):
                 for _, product in df.iterrows():
-                    if (pd.notna(product.get('Name')) and 
-                        pd.notna(product.get('UnlockLevel')) and
-                        int(product.get('UnlockLevel', 999)) <= player_level):
+                    if pd.notna(product.get('Name')):
                         item_name = str(product.get('Name'))
-                        # Exclude 패턴 체크
-                        if not any(pattern in item_name for pattern in exclude_patterns):
-                            if item_name not in available:
-                                available.append(item_name)
+                        
+                        # 건물 언락레벨 체크 (processing_buildings.csv 사용)
+                        building_name = key.replace('_goods', '')
+                        building_unlock_level = self._get_building_unlock_level(building_name)
+                        
+                        # 제품 자체의 언락레벨도 체크
+                        item_unlock_level = int(product.get('UnlockLevel', building_unlock_level))
+                        
+                        # 더 높은 언락레벨 사용 (건물 or 제품)
+                        required_level = max(building_unlock_level, item_unlock_level)
+                        
+                        if required_level <= player_level:
+                            # Exclude 패턴 체크
+                            if not any(pattern in item_name for pattern in exclude_patterns):
+                                if item_name not in available:
+                                    available.append(item_name)
         
         # Remove duplicates 및 레벨 순으로 정렬
         available = list(set(available))
@@ -671,48 +765,18 @@ class HayDaySimulator:
                                         return price
                                 except (ValueError, TypeError):
                                     continue
-            
-            for building in production_buildings:
-                if building in self.data and not self.data[building].empty:
-                    matching_items = self.data[building][self.data[building]['Name'] == item_name]
-                    if not matching_items.empty:
-                        # HayDay의 실제 주문 가격 사용 (OrderPrice 또는 OrderValue)
-                        item = matching_items.iloc[0]
-                        for price_col in ['OrderPrice', 'OrderValue', 'BoatOrderValue']:
-                            if pd.notna(item.get(price_col)):
-                                try:
-                                    price = int(item.get(price_col))
-                                    if price > 0:
-                                        return price
-                                except (ValueError, TypeError):
-                                    continue
-            
-            # Animal products 가격 찾기
-            if 'animals' in self.data and not self.data['animals'].empty:
-                matching_animals = self.data['animals'][self.data['animals']['Good'] == item_name]
-                if not matching_animals.empty:
-                    animal = matching_animals.iloc[0]
-                    for price_col in ['Value', 'ProcessValue', 'Price']:
-                        if pd.notna(animal.get(price_col)):
-                            try:
-                                price = int(animal.get(price_col))
-                                if price > 0:
-                                    return price
-                            except (ValueError, TypeError):
-                                continue
         
         except Exception as e:
-            print(f"Warning: Item value query error: {e}")
+            pass  # Silent error handling
         
-        # HayDay 기본 가치 (실제 게임 기반)
-        base_values = {
-            "Wheat": 1, "Corn": 2, "Carrot": 3, "Sugarcane": 4, "Cocoa": 5,
-            "Egg": 10, "Milk": 15, "Wool": 20,
-            "Bread": 11, "Butter": 44, "Cheese": 64, "Cookie": 54, "Cream": 25,
-            "Bacon": 50, "Pizza": 98
+        # 기본 가격 (HayDay 실제 데이터 기반)
+        default_prices = {
+            "Wheat": 1, "Corn": 1, "Egg": 20, "Milk": 36,
+            "Bread": 50, "Butter": 63, "Cheese": 115, "Cookie": 52, "Cream": 97,
+            "Apple": 20, "Strawberry": 40, "Carrot": 25
         }
         
-        return base_values.get(item_name, 20)  # 기본값 20
+        return default_prices.get(item_name, 20)  # 기본값 20 코인
     
     def _get_item_production_time(self, item_name: str) -> int:
         """Item 생산시간 조회 (실제 HayDay TimeMin 데이터)"""
@@ -754,22 +818,68 @@ class HayDaySimulator:
         
         return default_times.get(item_name, 15)  # 기본값 15분
     
-    def _get_item_unlock_level(self, item_name: str) -> int:
-        """Item 언락레벨 조회"""
+    def _get_building_unlock_level(self, building_name: str) -> int:
+        """건물 언락레벨 조회 (processing_buildings.csv)"""
         try:
-            production_buildings = ['bakery', 'dairy', 'cafe', 'barbecue_grill', 'cake_oven', 
-                                  'candy_machine', 'deep_fryer', 'jam_maker', 'juice_press']
+            if hasattr(self, 'processing_buildings') and not self.processing_buildings.empty:
+                # 건물명 매칭 (대소문자 무시)
+                matching_buildings = self.processing_buildings[
+                    self.processing_buildings['Name'].str.lower() == building_name.lower()
+                ]
+                if not matching_buildings.empty:
+                    unlock_level = matching_buildings.iloc[0].get('UnlockLevel')
+                    if pd.notna(unlock_level):
+                        try:
+                            return int(unlock_level)
+                        except (ValueError, TypeError):
+                            pass
+            return 0
+        except Exception:
+            return 0
+    
+    def _get_item_unlock_level(self, item_name: str) -> int:
+        """Item 언락레벨 조회 (CSV 데이터 기반)"""
+        try:
+            # 농작물 언락레벨 (fields.csv)
+            if 'fields' in self.data and not self.data['fields'].empty:
+                matching_crops = self.data['fields'][self.data['fields']['Name'] == item_name]
+                if not matching_crops.empty:
+                    unlock_level = matching_crops.iloc[0].get('UnlockLevel')
+                    if pd.notna(unlock_level):
+                        try:
+                            return int(unlock_level)
+                        except (ValueError, TypeError):
+                            pass
             
-            for building in production_buildings:
-                if building in self.data and not self.data[building].empty:
-                    matching_items = self.data[building][self.data[building]['Name'] == item_name]
-                    if not matching_items.empty:
+            # 제품 언락레벨 (production buildings CSV에서 찾기)
+            for key, df in self.data.items():
+                if df.empty or not key.endswith('_goods'):
+                    continue
+                    
+                matching_items = df[df['Name'] == item_name]
+                if not matching_items.empty:
+                    # building 이름으로 processing_buildings.csv에서 언락레벨 찾기
+                    building_name = key.replace('_goods', '')
+                    unlock_level = self._get_building_unlock_level(building_name)
+                    if unlock_level > 0:
+                        return unlock_level
+            
+            # 동물 제품 언락레벨  
+            if 'animals' in self.data and not self.data['animals'].empty:
+                matching_animals = self.data['animals'][self.data['animals']['Good'] == item_name]
+                if not matching_animals.empty:
+                    unlock_level = matching_animals.iloc[0].get('UnlockLevel')
+                    if pd.notna(unlock_level):
+                        try:
+                            return int(unlock_level)
+                        except (ValueError, TypeError):
+                            pass
                         item = matching_items.iloc[0]
                         if pd.notna(item.get('UnlockLevel')):
                             try:
                                 return int(item.get('UnlockLevel'))
                             except (ValueError, TypeError):
-                                continue
+                                pass
                                 
             # Animal products도 확인
             if 'animals' in self.data and not self.data['animals'].empty:
@@ -1161,7 +1271,7 @@ def create_dashboard():
             ascending = st.checkbox("오름차순", value=False if sort_by == "효율성" else True)
             
             if sort_by == "효율성":
-                df_production['효율성_숫자'] = df_production['효율성'].str.extract('(\d+\.?\d*)').astype(float)
+                df_production['효율성_숫자'] = df_production['효율성'].str.extract(r'(\d+\.?\d*)').astype(float)
                 df_production = df_production.sort_values('효율성_숫자', ascending=ascending)
                 df_production = df_production.drop('효율성_숫자', axis=1)
             else:

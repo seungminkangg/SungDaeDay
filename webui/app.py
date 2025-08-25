@@ -85,7 +85,12 @@ def init_simulator():
 
 @app.route('/')
 def index():
-    """메인 대시보드"""
+    """메인 페이지 - 주문 관리"""
+    return render_template('orders.html')
+
+@app.route('/dashboard')
+def dashboard():
+    """대시보드 페이지"""
     return render_template('dashboard.html')
 
 @app.route('/simulation')
@@ -263,17 +268,62 @@ def api_simulation_status():
 
 @app.route('/api/generate-order', methods=['POST'])
 def api_generate_order():
-    """Order 생성 API"""
+    """Order 생성 API (고급 파라미터 지원)"""
     if not simulator:
         return jsonify({"error": "Simulator not initialized"}), 500
     
     data = request.get_json()
     player_level = data.get('player_level', 20)
-    struggle_score = data.get('struggle_score', 50.0)
     delivery_type = DeliveryType(data.get('delivery_type', 'Truck'))
+    manual_mode = data.get('manual_mode', False)
+    
+    # 고급 모드 vs 자동 모드
+    if manual_mode:
+        # 수동 파라미터 사용
+        struggle_score = data.get('struggle_score', 50.0)
+        value_multiplier = data.get('value_multiplier', 1.0)
+        special_probability = data.get('special_probability', 10)
+        item_bonus = data.get('item_bonus', 0)
+    else:
+        # 실제 HayDay 로직으로 랜덤 생성 
+        import random
+        # 레벨에 따른 어려움 지수 (실제 HayDay처럼)
+        if player_level <= 15:
+            struggle_score = random.uniform(10, 40)  # 초보자는 쉬움
+        elif player_level <= 30:
+            struggle_score = random.uniform(20, 60)  # 중급자는 보통
+        elif player_level <= 50: 
+            struggle_score = random.uniform(40, 80)  # 고급자는 어려움
+        else:
+            struggle_score = random.uniform(60, 95)  # 전문가는 매우 어려움
+            
+        value_multiplier = random.uniform(0.8, 1.5)  # 가치 변동
+        special_probability = random.randint(5, 25)   # 특별주문 확률
+        item_bonus = random.choice([-1, 0, 0, 1])    # 아이템 수 변동
     
     try:
+        # 기본 주문 생성
         order = simulator.generate_delivery_order(player_level, struggle_score, delivery_type)
+        
+        # 고급 파라미터 적용
+        if order and manual_mode:
+            # 가치 배율 적용
+            order.total_value = int(order.total_value * value_multiplier)
+            
+            # 아이템 수 보너스 적용 
+            if item_bonus != 0:
+                items_list = list(order.items.keys())
+                if item_bonus > 0 and len(items_list) > 0:
+                    # 아이템 추가
+                    available_items = simulator._get_available_items(player_level)
+                    new_items = [item for item in available_items if item not in items_list]
+                    if new_items:
+                        new_item = random.choice(new_items)
+                        order.items[new_item] = random.randint(1, 3)
+                elif item_bonus < 0 and len(items_list) > 1:
+                    # 아이템 제거
+                    remove_item = random.choice(items_list)
+                    del order.items[remove_item]
         if order:
             return jsonify({
                 "order_id": order.order_id,
