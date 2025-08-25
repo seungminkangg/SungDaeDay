@@ -374,7 +374,8 @@
                 'VeryHard': 'dark'
             }[order.difficulty] || 'secondary';
             
-            const deliveryIcon = order.delivery_type === 'Truck' ? '🚚' : '🚂';
+            const deliveryIcon = order.delivery_type === 'Truck' ? '🚚' : 
+                                 order.delivery_type === 'Train' ? '🚂' : '🚢';
             
             let itemsList = '';
             for (const [item, qty] of Object.entries(order.items)) {
