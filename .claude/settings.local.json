@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir)",
+      "Bash(streamlit --version)",
+      "Bash(streamlit run:*)",
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(git add:*)",
+      "WebSearch",
+      "WebFetch(domain:hayday.fandom.com)",
+      "WebFetch(domain:township.fandom.com)",
+      "WebFetch(domain:support.supercell.com)",
+      "Bash(findstr:*)",
+      "Bash(copy:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
