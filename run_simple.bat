@@ -13,33 +13,31 @@ if errorlevel 1 (
 )
 
 echo.
-echo Installing required packages...
+echo Installing required packages (Flask standalone)...
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install pandas numpy flask jinja2 requests openpyxl
 
 if errorlevel 1 (
     echo WARNING: Some packages failed to install
     echo Trying alternative installation...
-    python -m pip install pandas numpy streamlit plotly flask jinja2 matplotlib seaborn requests openpyxl
+    python -m pip install pandas numpy flask jinja2 requests openpyxl
 )
 
 echo.
-echo Starting Flask Web UI...
+echo Starting HayDay Flask Web UI...
 cd webui
-start "Flask Server" python app.py
+start "HayDay Simulator" python app.py
 
-echo Starting Streamlit Dashboard...
-cd ..
-start "Streamlit Dashboard" streamlit run hayday_simulator.py --server.address 0.0.0.0 --server.port 8503
+timeout /t 2 > nul
 
 echo.
 echo ===================================================
-echo Servers are starting...
-echo Flask Web UI: http://localhost:5001
-echo Streamlit Dashboard: http://localhost:8503
+echo HayDay Flask Web UI is starting...
+echo Main URL: http://localhost:5001 (주문 관리)
+echo Data Explorer: http://localhost:5001/data
 echo Network Access: http://YOUR_LOCAL_IP:5001
 echo ===================================================
-echo Both servers will open in separate windows
-echo Close those windows to stop the servers
+echo Server will open in a separate window
+echo Close that window to stop the server
 echo Press any key to close this setup window
 pause > nul

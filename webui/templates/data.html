@@ -159,10 +159,10 @@
                     </button>
                 </div>
                 
-                <!-- Streamlit 연동 상태 -->
+                <!-- 데이터 통계 -->
                 <div class="mt-3">
-                    <small class="text-muted">연동 상태</small>
-                    <div id="connectionStatus" class="badge bg-secondary">확인 중...</div>
+                    <small class="text-muted">데이터 통계</small>
+                    <div class="badge bg-success" id="totalDataCount">로딩 중...</div>
                 </div>
             </div>
         </div>
@@ -178,8 +178,8 @@
                         <h1 class="h2 mb-0">📊 HayDay 원본 데이터 탐색</h1>
                     </div>
                     <div>
-                        <button class="btn btn-outline-primary" onclick="openStreamlit()">
-                            <i class="fas fa-external-link-alt me-2"></i>Streamlit 열기
+                        <button class="btn btn-outline-success" onclick="exportCurrentData()">
+                            <i class="fas fa-download me-2"></i>데이터 내보내기
                         </button>
                     </div>
                 </div>
@@ -398,11 +398,11 @@
                 title = '경험치 & 레벨업';
                 break;
             
-            // 통합 보기
+            // 통합 보기 (비활성화됨)
             case 'all_goods':
-                apiUrl = '/api/production-chains';
-                title = '모든 생산품 (통합)';
-                break;
+                document.getElementById('data-loading').innerHTML = 
+                    '<div class="alert alert-warning">이 기능은 현재 비활성화되어 있습니다.</div>';
+                return;
             case 'balancing':
                 apiUrl = '/api/balancing-policies';
                 title = '밸런싱 정책';
@@ -433,6 +433,7 @@
                 }
                 
                 displayData();
+                updateDataStats();
                 document.getElementById('data-loading').style.display = 'none';
                 document.getElementById('data-content').style.display = 'block';
             })
@@ -843,30 +844,14 @@
         }
     }
 
-    // Streamlit 열기
-    function openStreamlit() {
-        window.open('http://localhost:8501', '_blank');
-    }
-
-    // Streamlit 연결 상태 확인
-    function updateConnectionStatus() {
-        fetch('/api/streamlit-sync')
-            .then(response => response.json())
-            .then(data => {
-                const status = document.getElementById('connectionStatus');
-                if (data.streamlit_status === 'online') {
-                    status.className = 'badge bg-success';
-                    status.textContent = '🟢 Streamlit 연결됨';
-                } else {
-                    status.className = 'badge bg-warning';
-                    status.textContent = '🟡 Streamlit 오프라인';
-                }
-            })
-            .catch(error => {
-                const status = document.getElementById('connectionStatus');
-                status.className = 'badge bg-danger';
-                status.textContent = '🔴 연결 실패';
-            });
+    // 데이터 통계 업데이트
+    function updateDataStats() {
+        const totalRecords = currentData.length;
+        const statusElement = document.getElementById('totalDataCount');
+        if (statusElement) {
+            statusElement.textContent = `${formatNumber(totalRecords)}개 레코드`;
+            statusElement.className = totalRecords > 0 ? 'badge bg-success' : 'badge bg-warning';
+        }
     }
 
     // 페이지 로드 시 추가 초기화
@@ -876,11 +861,8 @@
             document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
         }
         
-        // 연결 상태 확인
-        updateConnectionStatus();
-        
-        // 정기적으로 연결 상태 확인
-        setInterval(updateConnectionStatus, 30000); // 30초마다 확인
+        // 초기 데이터 통계 업데이트
+        updateDataStats();
     });
 </script>
                 </div>

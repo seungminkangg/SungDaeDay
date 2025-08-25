@@ -93,15 +93,18 @@ def dashboard():
     """대시보드 페이지"""
     return render_template('dashboard.html')
 
+# 시뮬레이션과 생산 체인 라우트 비활성화
+"""
 @app.route('/simulation')
 def simulation_page():
-    """시뮬레이션 페이지"""
+    \"\"\"시뮬레이션 페이지\"\"\"
     return render_template('simulation.html')
 
 @app.route('/production')
 def production_page():
-    """Production 체인 분석 페이지"""
+    \"\"\"Production 체인 분석 페이지\"\"\"
     return render_template('production.html')
+"""
 
 @app.route('/orders')
 def orders_page():
@@ -162,9 +165,11 @@ def api_animals():
     
     return jsonify(animals_data)
 
+# Production chains API 비활성화
+"""
 @app.route('/api/production-chains')
 def api_production_chains():
-    """Production 체인 분석 API - HayDay 데이터 기반 간단한 오버뷰"""
+    # Production chains analysis API
     if not simulator:
         return jsonify({"error": "Simulator not initialized"}), 500
     
@@ -231,10 +236,13 @@ def api_production_chains():
     # 효율성 순으로 정렬
     chains_data.sort(key=lambda x: x.get('efficiency_per_min', 0), reverse=True)
     return jsonify(chains_data)
+"""
 
+# Simulation API 비활성화
+"""
 @app.route('/api/simulate', methods=['POST'])
 def api_simulate():
-    """경제 시뮬레이션 실행 API"""
+    # Economic simulation API disabled
     global simulation_data
     
     if not simulator:
@@ -263,12 +271,13 @@ def api_simulate():
 
 @app.route('/api/simulation-status')
 def api_simulation_status():
-    """시뮬레이션 상태 확인 API"""
+    # Simulation status check API disabled
     return jsonify(simulation_data)
+"""
 
 @app.route('/api/generate-order', methods=['POST'])
 def api_generate_order():
-    """Order 생성 API (고급 파라미터 지원)"""
+    # Order generation API with advanced parameters
     if not simulator:
         return jsonify({"error": "Simulator not initialized"}), 500
     
@@ -528,16 +537,16 @@ def order_generator():
     """실시간 주문 생성 페이지"""
     return render_template('order_generator.html')
 
-# Streamlit 연동 API
+# Streamlit 연동 API 비활성화
+"""
 @app.route('/api/streamlit-sync', methods=['GET', 'POST'])
 def streamlit_sync():
-    """Streamlit과 데이터 동기화"""
+    # Streamlit sync disabled for Flask standalone
     if request.method == 'POST':
         data = request.get_json()
-        # Streamlit에서 온 데이터 처리
         return jsonify({"status": "success", "message": "Data synced with Streamlit"})
     else:
-        # Streamlit 연결 상태 확인
+        # Streamlit connection check disabled
         try:
             import requests
             response = requests.get('http://localhost:8501/health', timeout=2)
@@ -550,6 +559,7 @@ def streamlit_sync():
             "flask_url": "http://localhost:5001",
             "streamlit_url": "http://localhost:8501"
         })
+"""
 
 # 실시간 주문 생성 API (Streamlit과 동일한 로직)
 @app.route('/api/generate-order-live', methods=['POST'])
