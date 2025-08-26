@@ -1372,26 +1372,22 @@ class SungDaeSimulator:
             'Bread': 3, 'Cookie': 8, 'Butter': 13, 'Chicken Feed': 6, 'Cow Feed': 11
         }
         
-        # 과일 나무들 (레벨 15-35) - 실제 HayDay 진행 순서
-        fruit_trees = {
-            'Apple': 15, 'AppleTree': 15, 'Cherry': 19, 'CherryTree': 19,
-            'Peach': 28, 'PeachTree': 28, 'Lemon': 23, 'LemonTree': 23,
-            'Olive': 35, 'OliveTree': 35, 'Orange': 26, 'OrangeTree': 26,
-            'Banana': 33, 'BananaTree': 33, 'Plum': 31, 'PlumTree': 31,
-            'Mango': 40, 'MangoTree': 40, 'Coconut': 42, 'CoconutTree': 42,
-            'Guava': 44, 'GuavaTree': 44, 'Pomegranate': 46, 'PomegranateTree': 46
+        # 과일들 (레벨 15-35) - Tree는 건물이므로 제외, Apple 등 과일만 포함
+        fruits = {
+            'Apple': 15, 'Cherry': 19, 'Peach': 28, 'Lemon': 23,
+            'Olive': 35, 'Orange': 26, 'Banana': 33, 'Plum': 31,
+            'Mango': 40, 'Coconut': 42, 'Guava': 44, 'Pomegranate': 46
         }
         
-        # 베리 부쉬들 (레벨 20-30)
-        berry_bushes = {
-            'Blackberry': 20, 'BlackberryBush': 20, 'Raspberry': 25, 'RaspberryBush': 25,
-            'Blueberry': 30, 'BlueberryBush': 30
+        # 베리류 (레벨 20-30) - Bush는 건물이므로 제외
+        berries = {
+            'Blackberry': 20, 'Raspberry': 25, 'Blueberry': 30
         }
         
-        # 특수 작물 (레벨 13-35)
+        # 특수 작물 (레벨 13-35) - Tree/Bush는 제외
         special_crops = {
-            'Cocoa': 13, 'CacaoTree': 13, 'Coffee': 23, 'CoffeeBush': 23,
-            'Tomato': 20, 'Potato': 18, 'Indigo': 25, 'Pumpkin': 30, 'Chili Pepper': 35
+            'Cocoa': 13, 'Coffee': 23, 'Tomato': 20, 'Potato': 18, 
+            'Indigo': 25, 'Pumpkin': 30, 'Chili Pepper': 35
         }
         
         # 아이템별 레벨 확인
@@ -1401,14 +1397,15 @@ class SungDaeSimulator:
             return animal_products[item_name]
         elif item_name in basic_processed:
             return basic_processed[item_name]
-        elif item_name in fruit_trees:
-            return fruit_trees[item_name]
-        elif item_name in berry_bushes:
-            return berry_bushes[item_name]
+        elif item_name in fruits:
+            return fruits[item_name]
+        elif item_name in berries:
+            return berries[item_name]
         elif item_name in special_crops:
             return special_crops[item_name]
         else:
-            # 알 수 없는 아이템은 높은 레벨로 설정 (기본적으로 필터링됨)
+            # Tree/Bush (건물)이거나 알 수 없는 아이템은 높은 레벨로 설정
+            # AppleTree, CherryTree 등은 건물이므로 여기서 필터링됨
             return 50
     
     # Helper methods for UI display data
