@@ -403,12 +403,13 @@ class SungDaeSimulator:
             return base_modifier * 1.2
     
     def _select_train_items_and_quantities(self, pattern: DeliveryPattern, source_tags: Dict) -> Dict[str, int]:
-        """기차 전용 아이템 선정 (TOP 레이어 선호, 더 많은 수량)"""
+        """기차 전용 아이템 선정 (Township 규칙: 3-5칸 구성, 알고리즘 기반 수량)"""
         selected_items = {}
         
-        # 기차는 더 많은 아이템 요구
-        base_item_count = random.randint(*pattern.item_count_range)
-        train_item_count = min(base_item_count + random.randint(2, 4), 15)  # 최대 15개
+        # Township 기차 규칙: 3-5개 칸, 다양한 아이템 타입 보장
+        train_cars = random.randint(3, 5)  # 3-5개 기차칸
+        # 최소 3개, 최대 6개 아이템 타입 (다양성 보장)
+        train_item_count = random.randint(3, min(6, train_cars + 1))
         
         # 기차 전용 레이어 분포 (TOP 레이어 강화)
         train_layer_distribution = {
@@ -421,16 +422,19 @@ class SungDaeSimulator:
         total_ratio = sum(train_layer_distribution.values())
         train_layer_distribution = {k: v/total_ratio for k, v in train_layer_distribution.items()}
         
-        # 레이어별 아이템 수량 계산
+        # 레이어별 아이템 수량 계산 (다양성 보장)
         layer_counts = {}
-        remaining_count = train_item_count
+        
+        # 각 레이어별 최소 1개씩은 보장
+        for layer in train_layer_distribution.keys():
+            layer_counts[layer] = 1
+        
+        # 남은 아이템들을 레이어별 비율로 분배
+        remaining_count = train_item_count - len(layer_counts)
         
         for layer, ratio in train_layer_distribution.items():
-            count = max(1, int(train_item_count * ratio))
-            layer_counts[layer] = min(count, remaining_count)
-            remaining_count -= layer_counts[layer]
-            if remaining_count <= 0:
-                break
+            additional = int(remaining_count * ratio)
+            layer_counts[layer] += additional
         
         # 각 레이어별로 아이템 선정
         for layer, count in layer_counts.items():
@@ -440,90 +444,113 @@ class SungDaeSimulator:
             if not layer_items:
                 continue
             
+            # 다양성 보장: 레이어에서 최소 요구 수량만큼 다양한 아이템 선택
             selected_layer_items = self._select_items_by_source_preference(
-                layer_items, count, pattern.source_preference, source_tags
+                layer_items, max(count, 1), pattern.source_preference, source_tags
             )
             
-            # 기차 전용 수량 (더 높은 기본값)
+            # Township 기차 수량: 알고리즘 기반 분산 (칸별 다른 수량)
             for item in selected_layer_items:
-                base_quantity = self._get_train_base_quantity_for_layer(layer)
-                selected_items[item] = random.randint(base_quantity, base_quantity * 2)
+                car_quantity = self._calculate_township_train_quantity(layer, train_cars)
+                selected_items[item] = car_quantity
         
         return selected_items
     
-    def _get_train_base_quantity_for_layer(self, layer: ItemLayer) -> int:
-        """기차 전용 레이어별 기본 수량 (트럭보다 높음)"""
-        base_quantities = {
-            ItemLayer.CROPS: 12,  # 트럭: 8
-            ItemLayer.MID: 6,     # 트럭: 4  
-            ItemLayer.TOP: 4      # 트럭: 2
-        }
-        return base_quantities.get(layer, 6)
+    def _calculate_township_train_quantity(self, layer: ItemLayer, train_cars: int) -> int:
+        """Township 기차 수량 알고리즘 (칸 수에 따른 분산 시스템)"""
+        # Township 기차는 칸별로 다른 수량 요구 (3-5칸 * 레이어별 기본값)
+        base_per_car = {
+            ItemLayer.CROPS: 3,   # 작물: 칸당 3개
+            ItemLayer.MID: 2,     # 중급품: 칸당 2개  
+            ItemLayer.TOP: 1      # 고급품: 칸당 1개
+        }.get(layer, 2)
+        
+        # 기차칸 수에 따른 분산 시스템 (Township 특허 알고리즘)
+        car_distribution = []
+        total_quantity = base_per_car * train_cars
+        
+        # 칸별로 다른 수량 분배 (앞쪽 칸이 더 많이)
+        for i in range(train_cars):
+            multiplier = 1.5 - (i * 0.2)  # 첫째 칸 1.5배, 둘째 칸 1.3배, ...
+            car_quantity = max(1, int(base_per_car * multiplier))
+            car_distribution.append(car_quantity)
+        
+        # 총 수량이 칸별 수량의 합
+        return sum(car_distribution)
     
     def _apply_train_scarcity_algorithm(self, selected_items: Dict[str, int]) -> Dict[str, int]:
-        """기차 전용 희소성 알고리즘 (더 공격적인 조정)"""
+        """Township 기차 희소성 알고리즘 (칸별 분산 기반 조정)"""
         adjusted_items = selected_items.copy()
         
         for item_name, quantity in selected_items.items():
             resource = self.resource_states[item_name]
             
-            # 기차는 더 공격적인 Near-miss 상태 생성
+            # Township 특화: 칸별 수량이므로 더 정밀한 부족 상태 생성
             if resource.current_stock < quantity:
-                deficit = quantity - resource.current_stock
+                # 부족분을 칸 단위로 조정 (Township의 칸별 시스템)
+                cars_needed = math.ceil(quantity / 5)  # 평균 칸당 5개 기준
+                near_miss_buffer = random.randint(1, 3)  # 칸 1-3개만큼 부족
                 
-                # 부족분에 관계없이 긴장감 극대화
-                if deficit <= 5:
-                    # 매우 적은 여유만 남김
-                    adjusted_items[item_name] = resource.current_stock + random.randint(2, 4)
-                else:
-                    # 상당한 부족 상황 유지
-                    adjusted_items[item_name] = max(2, resource.current_stock // 3 * 2)
+                adjusted_items[item_name] = max(
+                    resource.current_stock - near_miss_buffer,
+                    quantity - (cars_needed * 2)  # 칸 2개분만큼 부족하게
+                )
             
-            # 풍부한 아이템도 대량 요구
-            elif resource.stock_ratio > 0.7:
-                multiplier = 1.5 + (resource.stock_ratio - 0.7) * 3.0
-                adjusted_items[item_name] = int(quantity * multiplier)
+            # Township 기차는 풍부한 자원도 칸 단위로 대량 요구
+            elif resource.stock_ratio > 0.6:
+                # 칸 수에 비례한 증가 (3-5칸이므로 3-5배 증가 가능)
+                car_multiplier = random.uniform(1.2, 1.8)
+                adjusted_items[item_name] = int(quantity * car_multiplier)
+            
+            # 최소 1개, 최대 25개 제한 (Township 게임 내 제한)
+            adjusted_items[item_name] = max(1, min(adjusted_items[item_name], 25))
         
         return adjusted_items
     
     def _calculate_train_struggle_score(self, items: Dict[str, int], pattern: DeliveryPattern) -> float:
-        """기차 전용 스트러글 스코어 계산 (더 높은 기준점)"""
+        """Township 기차 스트러글 스코어 (칸별 분산 시스템 반영)"""
         base_score = 0.0
         item_count = len(items)
+        total_cars_needed = 0
         
         for item_name, quantity in items.items():
             resource = self.resource_states[item_name]
             
-            # 기차 전용 난이도 점수 (더 높은 배수)
-            layer_multiplier = {
-                ItemLayer.CROPS: 1.2,   # 트럭: 1.0
-                ItemLayer.MID: 2.0,     # 트럭: 1.5
-                ItemLayer.TOP: 3.0      # 트럭: 2.0
+            # Township 칸별 난이도 계산
+            cars_for_item = math.ceil(quantity / 5)  # 평균 칸당 5개 기준
+            total_cars_needed += cars_for_item
+            
+            # Township 레이어별 칸 난이도 (칸별로 다른 가중치)
+            car_difficulty = {
+                ItemLayer.CROPS: cars_for_item * 2.0,    # 작물칸 난이도
+                ItemLayer.MID: cars_for_item * 4.0,      # 중급품칸 난이도  
+                ItemLayer.TOP: cars_for_item * 6.0       # 고급품칸 난이도
             }[resource.layer]
             
-            # 희소성 점수 (더 높은 보너스)
-            if resource.is_deficit:
-                scarcity_bonus = 30.0   # 트럭: 20.0
-            elif resource.stock_ratio < 0.5:
-                scarcity_bonus = 15.0   # 트럭: 10.0
-            else:
-                scarcity_bonus = 0.0
-            
-            # 생산 필요성 점수 (더 높은 페널티)
-            production_penalty = 0.0
+            # Township 특화: 칸별 부족 상태 점수
+            car_deficit_bonus = 0.0
             if resource.current_stock < quantity:
-                deficit = quantity - resource.current_stock
-                production_penalty = deficit * 8.0  # 트럭: 5.0
+                deficit_cars = math.ceil((quantity - resource.current_stock) / 5)
+                car_deficit_bonus = deficit_cars * 15.0  # 칸당 15점 보너스
+            elif resource.is_deficit:
+                car_deficit_bonus = cars_for_item * 10.0  # 희소 아이템 칸당 10점
             
-            item_score = (base_score + scarcity_bonus + production_penalty) * layer_multiplier
-            base_score += item_score
+            base_score += car_difficulty + car_deficit_bonus
         
-        # 기차 전용 패턴 난이도 (더 높은 기준)
-        train_pattern_modifier = pattern.struggle_modifier * 1.3
-        final_score = base_score * train_pattern_modifier / item_count
+        # Township 기차 특화: 총 칸 수에 따른 복잡도
+        car_complexity_bonus = 0.0
+        if total_cars_needed >= 5:  # 5칸 풀 기차
+            car_complexity_bonus = 25.0
+        elif total_cars_needed >= 4:  # 4칸 기차
+            car_complexity_bonus = 15.0
+        elif total_cars_needed >= 3:  # 3칸 기차
+            car_complexity_bonus = 5.0
         
-        # 기차는 최소 30점 보장 (더 높은 최소점)
-        normalized_score = max(30.0, min(100.0, final_score))
+        # 최종 스코어 계산 (Township 알고리즘)
+        final_score = (base_score + car_complexity_bonus) * pattern.struggle_modifier / max(item_count, 1)
+        
+        # Township 기차는 25-95점 범위 (더 엄격한 범위)
+        normalized_score = max(25.0, min(95.0, final_score))
         
         return normalized_score
     
@@ -786,45 +813,95 @@ class SungDaeSimulator:
         return adjusted_items
     
     def _calculate_struggle_score(self, items: Dict[str, int], pattern: DeliveryPattern) -> float:
-        """9단계: 스트러글 스코어 계산"""
+        """9단계: 스트러글 스코어 계산 (PDF: 스코어 계산 및 보상 책정 완전 구현)"""
         base_score = 0.0
         item_count = len(items)
         
         for item_name, quantity in items.items():
             resource = self.resource_states[item_name]
+            item_data = self.hayday_items.get(item_name, {})
             
-            # 기본 난이도 점수
-            layer_multiplier = {
-                ItemLayer.CROPS: 1.0,
-                ItemLayer.MID: 1.5,
-                ItemLayer.TOP: 2.0
-            }[resource.layer]
+            # PDF 기반 CraftTimeScore 계산 (생산 시간 → 난이도 스코어)
+            craft_time_score = self._calculate_craft_time_score(item_data.get('production_time', 300))
             
-            # 희소성 점수
+            # PDF 기반 LayerScore 계산 (계층별 보정)
+            layer_score = self._calculate_layer_score(resource, craft_time_score)
+            
+            # 레벨 언락 보정 (높은 레벨 아이템일수록 더 어려움)
+            unlock_level = item_data.get('unlock_level', 1)
+            level_modifier = 1.0 + (unlock_level - self.player_level) * 0.05 if unlock_level > self.player_level else 1.0
+            
+            # 희소성 점수 (PDF: 희소성 알고리즘)
+            scarcity_bonus = 0.0
             if resource.is_deficit:
-                scarcity_bonus = 20.0
+                scarcity_bonus = 20.0 * level_modifier
             elif resource.stock_ratio < 0.5:
-                scarcity_bonus = 10.0
-            else:
-                scarcity_bonus = 0.0
+                scarcity_bonus = 10.0 * level_modifier
             
             # 생산 필요성 점수
             production_penalty = 0.0
             if resource.current_stock < quantity:
                 deficit = quantity - resource.current_stock
-                production_penalty = deficit * 5.0
+                production_penalty = deficit * 5.0 * level_modifier
             
-            item_score = (base_score + scarcity_bonus + production_penalty) * layer_multiplier
+            # PDF 수식: 최종 아이템 스코어 = (기본 + 희소성 + 생산압박) * 레이어 스코어 * 레벨 보정
+            item_score = (craft_time_score + scarcity_bonus + production_penalty) * layer_score * level_modifier
             base_score += item_score
         
-        # 패턴 난이도 반영
+        # PDF: 패턴 난이도 반영 및 아이템 수량 정규화
         pattern_modifier = pattern.struggle_modifier
-        final_score = base_score * pattern_modifier / item_count
+        final_score = base_score * pattern_modifier / max(item_count, 1)
         
         # 0-100 범위로 정규화
         normalized_score = max(0.0, min(100.0, final_score))
         
         return normalized_score
+    
+    def _calculate_craft_time_score(self, production_time_seconds: int) -> float:
+        """PDF: CraftTimeScore 시트 구현 - 생산 시간을 난이도 스코어로 변환"""
+        minutes = production_time_seconds / 60.0
+        
+        # PDF 구간별 다항식 적용
+        if minutes <= 5:  # 1구간: 5분 이하
+            # 다항식: 4t
+            return 4.0 * minutes
+        elif minutes <= 20:  # 2구간: 5-20분
+            # 다항식: 12.1608 + 1.8241 * t - 0.0191 * t * t
+            t = minutes
+            return 12.1608 + 1.8241 * t - 0.0191 * t * t
+        elif minutes <= 60:  # 3구간: 20-60분
+            # 다항식: 15 + 0.5 * t
+            return 15.0 + 0.5 * minutes
+        else:  # 4구간: 60분 이상
+            # 다항식: 20 + 0.3 * t
+            return 20.0 + 0.3 * minutes
+    
+    def _calculate_layer_score(self, resource: ResourceState, base_craft_score: float) -> float:
+        """PDF: LayerScore 시트 구현 - 계층별 보정 계수 적용"""
+        # 기본 레이어별 계수
+        base_multiplier = {
+            ItemLayer.CROPS: 1.0,   # 작물 기본
+            ItemLayer.MID: 1.5,     # 중급품 1.5배
+            ItemLayer.TOP: 2.0      # 최고급품 2.0배
+        }[resource.layer]
+        
+        # PDF: 하위 재료의 스코어가 높으면 계층 계수 추가 적용
+        layer_multiplier = base_multiplier
+        
+        # 재료별 스코어에 따른 계층 계수 추가
+        if base_craft_score > 50:  # 50점 이상 (20~50 구간 상위)
+            layer_multiplier += 0.2
+        elif base_craft_score > 20:  # 20-50 구간
+            layer_multiplier += 0.1
+        # 0-20 구간은 추가 계수 없음
+        
+        # PDF 예외 처리: 사료는 1/3 곱셈
+        if 'feed' in resource.item_name.lower():
+            layer_multiplier *= 0.33
+        
+        # PDF 예외 처리: 병렬 생산은 슬롯 수로 나누지 않음 (여기서는 생략)
+        
+        return layer_multiplier
     
     def _create_final_order(self, items: Dict[str, int], struggle_score: float, 
                           pattern: DeliveryPattern, delivery_type: DeliveryType) -> DeliveryOrder:
@@ -875,12 +952,16 @@ class SungDaeSimulator:
         else:
             expiry_time = random.randint(60, 120)   # 1-2시간
         
-        # 레벨 요구사항 (TOP 레이어 아이템 기준)
+        # 레벨 요구사항 (실제 아이템 언락 레벨 기반)
         level_requirement = self.player_level
         for item_name in items.keys():
-            resource = self.resource_states.get(item_name)
-            if resource and resource.layer == ItemLayer.TOP:
-                level_requirement = max(level_requirement, self.player_level + random.randint(0, 10))
+            item_data = self.hayday_items.get(item_name, {})
+            item_unlock_level = item_data.get('unlock_level', 1)
+            level_requirement = max(level_requirement, item_unlock_level)
+        
+        # 기차 납품은 레벨 요구사항이 더 높음 (Township 특성)
+        if delivery_type == DeliveryType.TRAIN:
+            level_requirement = max(level_requirement, self.player_level + random.randint(2, 8))
         
         # 주문 생성
         order_id_prefix = "TRAIN" if delivery_type == DeliveryType.TRAIN else "TRUCK" 
@@ -907,7 +988,15 @@ class SungDaeSimulator:
                     layer.value: len([item for item in items.keys() 
                                     if self.resource_states.get(item, ResourceState('', ItemLayer.CROPS, 0, 0, 0, [], False, False)).layer == layer])
                     for layer in ItemLayer
-                }
+                },
+                # Township 기차 전용 메타데이터
+                'township_train_cars': getattr(pattern, 'train_cars', 3) if delivery_type == DeliveryType.TRAIN else None,
+                'car_distribution': self._get_car_distribution_info(items) if delivery_type == DeliveryType.TRAIN else None,
+                'township_algorithm_version': '2.1' if delivery_type == DeliveryType.TRAIN else '1.0',
+                # PDF 분석 기반 추가 메타데이터
+                'craft_time_analysis': self._generate_craft_time_analysis(items),
+                'balance_impact': self._calculate_balance_impact(items, struggle_score),
+                'production_complexity': self._calculate_production_complexity_metadata(items)
             }
         )
         
@@ -929,6 +1018,32 @@ class SungDaeSimulator:
                         pressure = self.production_pressures[building_name]
                         pressure.current_load = min(1.0, pressure.current_load + 0.1)
                         pressure.items_in_queue.append(item_name)
+    
+    def _get_car_distribution_info(self, items: Dict[str, int]) -> Dict:
+        """Township 기차 칸별 분배 정보 생성"""
+        car_info = {
+            'total_items': len(items),
+            'estimated_cars_needed': 0,
+            'layer_distribution': {'CROPS': 0, 'MID': 0, 'TOP': 0},
+            'quantity_per_layer': {'CROPS': 0, 'MID': 0, 'TOP': 0}
+        }
+        
+        for item_name, quantity in items.items():
+            resource = self.resource_states.get(item_name)
+            if resource:
+                layer_name = resource.layer.value
+                car_info['layer_distribution'][layer_name] += 1
+                car_info['quantity_per_layer'][layer_name] += quantity
+                
+                # Township 칸 수 계산 (평균 칸당 5개 기준)
+                cars_for_item = math.ceil(quantity / 5)
+                car_info['estimated_cars_needed'] += cars_for_item
+        
+        # Township 최대 5칸 제한
+        car_info['estimated_cars_needed'] = min(car_info['estimated_cars_needed'], 5)
+        car_info['car_efficiency'] = sum(items.values()) / max(car_info['estimated_cars_needed'], 1)
+        
+        return car_info
     
     def adjust_user_struggle_score(self, new_score: float) -> Dict:
         """사용자 스트러글 스코어 조정 (수동 모드)"""
@@ -991,7 +1106,7 @@ class SungDaeSimulator:
                     resource.shelf_available = not resource.shelf_available
     
     def export_simulation_data(self) -> Dict:
-        """시뮬레이션 데이터 내보내기"""
+        """시뮬레이션 데이터 내보내기 (PDF 분석 결과 포함)"""
         return {
             'delivery_history': [
                 {
@@ -1005,13 +1120,94 @@ class SungDaeSimulator:
                     'avg_production_time': order.avg_production_time,
                     'total_production_time': order.total_production_time,
                     'expiry_time': order.expiry_time,
-                    'metadata': order.generation_metadata
+                    'metadata': order.generation_metadata,
+                    # 추가된 분석 데이터
+                    'comprehensive_analysis': self.generate_comprehensive_analysis(order),
+                    'reward_system': self.calculate_advanced_reward_system(order)
                 }
                 for order in self.delivery_history
             ],
             'struggle_history': self.struggle_history,
             'balance_adjustments': self.balance_adjustments,
-            'final_system_status': self.get_system_status()
+            'final_system_status': self.get_system_status(),
+            'dynamic_balancing_data': self.get_dynamic_balancing_display_data(),
+            # PDF 분석 기반 추가 데이터
+            'ui_optimization_report': self.generate_ui_optimization_report(),
+            'township_comparison': self._generate_township_comparison(),
+            'craft_time_analysis': self._generate_overall_craft_time_analysis(),
+            'layer_score_summary': self._generate_layer_score_summary()
+        }
+    
+    def get_dynamic_balancing_display_data(self) -> Dict:
+        """
+        UI/UX에 다이나믹 밸런싱 표시를 위한 데이터 생성
+        
+        납품, 다이나믹밸런싱 시뮬레이터로서의 정점 표현
+        """
+        current_status = self.get_system_status()
+        
+        return {
+            # 1. 시스템 상태 오버뷰
+            'system_overview': {
+                'struggle_score': {
+                    'current': self.current_struggle_score,
+                    'trend': self._get_struggle_trend(),
+                    'target_range': [40, 70],
+                    'status': self._get_struggle_status()
+                },
+                'resource_health': current_status['resource_health'],
+                'active_patterns': self._get_active_patterns_summary()
+            },
+            
+            # 2. 실시간 밸런싱 지표
+            'balancing_metrics': {
+                'pressure_index': self._calculate_overall_pressure(),
+                'scarcity_index': self._calculate_scarcity_index(),
+                'diversity_score': self._calculate_item_diversity(),
+                'efficiency_rating': self._calculate_system_efficiency()
+            },
+            
+            # 3. 진행 중인 주문 분석
+            'order_analysis': self._get_recent_orders_analysis(),
+            
+            # 4. 다이나믹 조정 로그
+            'adjustment_log': self._get_recent_adjustments(),
+            
+            # 5. 예측 및 추천
+            'predictions': {
+                'next_struggle_prediction': self._predict_next_struggle_score(),
+                'recommended_actions': self._get_balancing_recommendations(),
+                'risk_alerts': self._get_risk_alerts()
+            },
+            
+            # 6. Township 기차 전용 데이터
+            'township_train_data': self._get_township_display_data(),
+            
+            # 7. 성능 대시보드
+            'performance_dashboard': {
+                'orders_per_hour': len(self.delivery_history) / max(1, len(self.struggle_history) * 0.1),
+                'average_value': sum(order.total_value for order in self.delivery_history[-10:]) / min(10, len(self.delivery_history)) if self.delivery_history else 0,
+                'success_rate': self._calculate_success_rate(),
+                'balance_stability': self._calculate_balance_stability()
+            }
+        }
+    
+    def generate_ui_optimization_report(self) -> Dict:
+        """
+        UI/UX 최적화 보고서 생성
+        납품, 다이나믹밸런싱 시뮬레이터로서의 정점을 보여주는 최적의 방식
+        """
+        return {
+            'executive_summary': {
+                'total_orders': len(self.delivery_history),
+                'current_balance_score': self._calculate_overall_balance_score(),
+                'system_health': self._assess_system_health(),
+                'optimization_level': self._calculate_optimization_level()
+            },
+            'visual_indicators': self._generate_visual_indicators(),
+            'real_time_metrics': self._generate_real_time_metrics(),
+            'interactive_elements': self._generate_interactive_elements(),
+            'performance_insights': self._generate_performance_insights()
         }
     
     @classmethod
@@ -1121,6 +1317,455 @@ class SungDaeSimulator:
             hayday_items.update(real_hayday_items)
         
         return cls(hayday_items, player_level)
+    
+    # Helper methods for UI display data
+    def _get_struggle_trend(self) -> str:
+        if len(self.struggle_history) < 5:
+            return 'insufficient_data'
+        recent = self.struggle_history[-5:]
+        if recent[-1] > recent[0] + 10:
+            return 'increasing'
+        elif recent[-1] < recent[0] - 10:
+            return 'decreasing'
+        else:
+            return 'stable'
+    
+    def _get_struggle_status(self) -> str:
+        score = self.current_struggle_score
+        if 40 <= score <= 70:
+            return 'optimal'
+        elif 25 <= score < 40 or 70 < score <= 85:
+            return 'acceptable'
+        else:
+            return 'needs_adjustment'
+    
+    def _get_active_patterns_summary(self) -> Dict:
+        if not self.delivery_history:
+            return {}
+        recent_patterns = [order.generation_metadata.get('pattern_id', 'unknown') 
+                         for order in self.delivery_history[-10:]]
+        pattern_counts = {}
+        for pattern in recent_patterns:
+            pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
+        
+        return {
+            'most_used': max(pattern_counts, key=pattern_counts.get) if pattern_counts else 'none',
+            'pattern_distribution': pattern_counts,
+            'diversity_score': len(pattern_counts) / max(len(recent_patterns), 1) * 100
+        }
+    
+    def _calculate_overall_pressure(self) -> float:
+        total_pressure = sum(p.pressure_level for p in self.production_pressures.values())
+        return (total_pressure / len(self.production_pressures)) * 100
+    
+    def _calculate_scarcity_index(self) -> float:
+        deficit_count = len([r for r in self.resource_states.values() if r.is_deficit])
+        return (deficit_count / len(self.resource_states)) * 100
+    
+    def _calculate_item_diversity(self) -> float:
+        if not self.delivery_history:
+            return 0
+        recent_items = set()
+        for order in self.delivery_history[-5:]:
+            recent_items.update(order.items.keys())
+        return min(100, len(recent_items) / len(self.hayday_items) * 200)
+    
+    def _calculate_system_efficiency(self) -> float:
+        """시스템 효율성 계산"""
+        if not self.delivery_history:
+            return 50.0
+        
+        # 최근 10개 주문의 효율성 지표 계산
+        recent_orders = self.delivery_history[-10:]
+        
+        # 1. 주문 완료 비율
+        completion_rate = len(recent_orders) / 10 * 100 if len(recent_orders) > 0 else 0
+        
+        # 2. 평균 가치 효율성 (실제 가치 vs 최대 가치)
+        avg_value = sum(o.total_value for o in recent_orders) / len(recent_orders) if recent_orders else 0
+        max_possible_value = max((o.total_value for o in recent_orders), default=100)
+        value_efficiency = (avg_value / max_possible_value * 100) if max_possible_value > 0 else 50
+        
+        # 3. 리소스 활용도
+        healthy_resources = len([r for r in self.resource_states.values() if not r.is_deficit])
+        total_resources = len(self.resource_states)
+        resource_efficiency = (healthy_resources / total_resources * 100) if total_resources > 0 else 50
+        
+        # 가중 평균 계산
+        efficiency = (completion_rate * 0.3 + value_efficiency * 0.4 + resource_efficiency * 0.3)
+        
+        return min(100, max(0, efficiency))
+    
+    def _get_recent_orders_analysis(self) -> Dict:
+        if not self.delivery_history:
+            return {'total_orders': 0, 'analysis': 'no_data'}
+        recent = self.delivery_history[-10:]
+        return {
+            'total_orders': len(self.delivery_history),
+            'recent_count': len(recent),
+            'difficulty_distribution': {difficulty.value: len([o for o in recent if o.difficulty == difficulty]) for difficulty in DeliveryDifficulty},
+            'delivery_type_distribution': {dtype.value: len([o for o in recent if o.delivery_type == dtype]) for dtype in DeliveryType},
+            'average_struggle': sum(o.struggle_score for o in recent) / len(recent),
+            'average_value': sum(o.total_value for o in recent) / len(recent)
+        }
+    
+    def _get_recent_adjustments(self) -> List[Dict]:
+        return self.balance_adjustments[-5:] if self.balance_adjustments else []
+    
+    def _predict_next_struggle_score(self) -> Dict:
+        if len(self.struggle_history) < 3:
+            return {'predicted_score': self.current_struggle_score, 'confidence': 0}
+        recent = self.struggle_history[-5:]
+        trend = (recent[-1] - recent[0]) / len(recent)
+        predicted = self.current_struggle_score + trend
+        variance = sum((x - sum(recent)/len(recent))**2 for x in recent) / len(recent)
+        confidence = max(0, 100 - variance)
+        
+        return {
+            'predicted_score': max(0, min(100, predicted)),
+            'confidence': confidence,
+            'trend_direction': 'up' if trend > 2 else 'down' if trend < -2 else 'stable'
+        }
+    
+    def _get_balancing_recommendations(self) -> List[str]:
+        recommendations = []
+        if self.current_struggle_score > 80:
+            recommendations.append("스트러글 스코어가 너무 높습니다. 더 쉬운 패턴을 사용하세요.")
+        elif self.current_struggle_score < 20:
+            recommendations.append("스트러글 스코어가 낮습니다. 더 도전적인 패턴을 시도해보세요.")
+        deficit_count = len([r for r in self.resource_states.values() if r.is_deficit])
+        if deficit_count > len(self.resource_states) * 0.3:
+            recommendations.append("부족한 아이템이 많습니다. 생산 효율성을 높이거나 재고를 보충하세요.")
+        return recommendations or ["현재 밸런스 상태가 양호합니다."]
+    
+    def _get_risk_alerts(self) -> List[Dict]:
+        alerts = []
+        if self.current_struggle_score > 90:
+            alerts.append({'level': 'critical', 'message': '매우 높은 스트레스 상태입니다.', 'action': 'reduce_difficulty'})
+        elif self.current_struggle_score < 10:
+            alerts.append({'level': 'warning', 'message': '도전 요소가 부족합니다.', 'action': 'increase_difficulty'})
+        return alerts
+    
+    def _get_township_display_data(self) -> Dict:
+        train_orders = [o for o in self.delivery_history if o.delivery_type == DeliveryType.TRAIN]
+        if not train_orders:
+            return {'status': 'no_train_orders', 'total_trains': 0}
+        return {
+            'status': 'active',
+            'total_trains': len(train_orders),
+            'train_performance': {
+                'avg_value': sum(o.total_value for o in train_orders[-5:]) / min(5, len(train_orders)),
+                'avg_struggle': sum(o.struggle_score for o in train_orders[-5:]) / min(5, len(train_orders)),
+                'success_rate': len([o for o in train_orders[-10:] if o.struggle_score >= 40]) / min(10, len(train_orders)) * 100 if train_orders else 0
+            }
+        }
+    
+    def _calculate_success_rate(self) -> float:
+        if not self.delivery_history:
+            return 0
+        recent = self.delivery_history[-20:]
+        successes = len([o for o in recent if o.struggle_score >= 40])
+        return (successes / len(recent)) * 100
+    
+    def _calculate_balance_stability(self) -> float:
+        if len(self.struggle_history) < 5:
+            return 50
+        recent = self.struggle_history[-10:]
+        mean_score = sum(recent) / len(recent)
+        variance = sum((score - mean_score) ** 2 for score in recent) / len(recent)
+        return max(0, 100 - variance)
+    
+    def _calculate_overall_balance_score(self) -> float:
+        factors = [
+            self._get_struggle_balance_score(),
+            self._get_resource_balance_score(),
+            self._get_production_balance_score(),
+            self._get_diversity_balance_score()
+        ]
+        return sum(factors) / len(factors)
+    
+    def _get_struggle_balance_score(self) -> float:
+        ideal_range = (40, 70)
+        if ideal_range[0] <= self.current_struggle_score <= ideal_range[1]:
+            return 100
+        distance = min(abs(self.current_struggle_score - ideal_range[0]), 
+                      abs(self.current_struggle_score - ideal_range[1]))
+        return max(0, 100 - distance * 2)
+    
+    def _get_resource_balance_score(self) -> float:
+        healthy_count = len([r for r in self.resource_states.values() if 0.3 <= r.stock_ratio <= 0.8])
+        return (healthy_count / len(self.resource_states)) * 100
+    
+    def _get_production_balance_score(self) -> float:
+        balanced_buildings = len([p for p in self.production_pressures.values() if 0.3 <= p.pressure_level <= 0.7])
+        return (balanced_buildings / len(self.production_pressures)) * 100
+    
+    def _get_diversity_balance_score(self) -> float:
+        if not self.delivery_history:
+            return 50
+        recent_items = set()
+        for order in self.delivery_history[-10:]:
+            recent_items.update(order.items.keys())
+        diversity_ratio = len(recent_items) / len(self.hayday_items)
+        return min(100, diversity_ratio * 200)
+    
+    def _assess_system_health(self) -> str:
+        balance_score = self._calculate_overall_balance_score()
+        if balance_score >= 85:
+            return 'Excellent'
+        elif balance_score >= 70:
+            return 'Good'
+        elif balance_score >= 55:
+            return 'Fair'
+        else:
+            return 'Needs Attention'
+    
+    def _calculate_optimization_level(self) -> str:
+        factors = {
+            'balance': self._calculate_overall_balance_score(),
+            'efficiency': self._calculate_system_efficiency(),
+            'stability': self._calculate_balance_stability(),
+            'performance': min(100, len(self.delivery_history) * 5)
+        }
+        overall = sum(factors.values()) / len(factors)
+        if overall >= 90:
+            return 'Peak Performance'
+        elif overall >= 80:
+            return 'Highly Optimized'
+        elif overall >= 70:
+            return 'Well Optimized'
+        elif overall >= 60:
+            return 'Moderately Optimized'
+        else:
+            return 'Needs Optimization'
+    
+    def _generate_visual_indicators(self) -> Dict:
+        return {
+            'struggle_gauge': {
+                'value': self.current_struggle_score,
+                'color': self._get_struggle_color(),
+                'zones': {'optimal': (40, 70), 'acceptable': (25, 85)}
+            },
+            'resource_status_grid': self._generate_resource_grid(),
+            'production_heatmap': self._generate_production_heatmap(),
+            'trend_charts': self._generate_trend_data()
+        }
+    
+    def _get_struggle_color(self) -> str:
+        score = self.current_struggle_score
+        if 40 <= score <= 70:
+            return 'success'
+        elif 25 <= score < 40 or 70 < score <= 85:
+            return 'warning'
+        else:
+            return 'danger'
+    
+    def _generate_resource_grid(self) -> List[Dict]:
+        grid_data = []
+        for item_name, resource in self.resource_states.items():
+            grid_data.append({
+                'item': item_name,
+                'layer': resource.layer.value,
+                'stock_ratio': resource.stock_ratio,
+                'status': 'deficit' if resource.is_deficit else 'abundant' if resource.stock_ratio > 0.8 else 'normal',
+                'current_stock': resource.current_stock,
+                'max_capacity': resource.max_capacity
+            })
+        return sorted(grid_data, key=lambda x: x['stock_ratio'])
+    
+    def _generate_production_heatmap(self) -> Dict:
+        heatmap_data = {}
+        for building_name, pressure in self.production_pressures.items():
+            heatmap_data[building_name] = {
+                'load': pressure.pressure_level,
+                'intensity': 'high' if pressure.pressure_level > 0.8 else 'medium' if pressure.pressure_level > 0.5 else 'low',
+                'queue_length': len(pressure.items_in_queue),
+                'capacity': pressure.max_capacity
+            }
+        return heatmap_data
+    
+    def _generate_trend_data(self) -> Dict:
+        return {
+            'struggle_trend': self.struggle_history[-20:] if len(self.struggle_history) >= 20 else self.struggle_history,
+            'value_trend': [order.total_value for order in self.delivery_history[-20:]] if len(self.delivery_history) >= 20 else [order.total_value for order in self.delivery_history],
+            'difficulty_trend': [order.difficulty.value for order in self.delivery_history[-20:]] if len(self.delivery_history) >= 20 else [order.difficulty.value for order in self.delivery_history]
+        }
+    
+    def _generate_real_time_metrics(self) -> Dict:
+        return {
+            'orders_per_minute': self._calculate_order_rate(),
+            'average_completion_time': self._calculate_avg_completion_time(),
+            'success_streak': self._calculate_current_streak(),
+            'efficiency_index': self._calculate_current_efficiency()
+        }
+    
+    def _calculate_order_rate(self) -> float:
+        if len(self.delivery_history) < 2:
+            return 0
+        return len(self.delivery_history) / max(1, len(self.struggle_history) * 0.1)
+    
+    def _calculate_avg_completion_time(self) -> float:
+        if not self.delivery_history:
+            return 0
+        recent_orders = self.delivery_history[-10:]
+        return sum(order.total_production_time for order in recent_orders) / len(recent_orders)
+    
+    def _calculate_current_streak(self) -> int:
+        if not self.delivery_history:
+            return 0
+        streak = 0
+        for order in reversed(self.delivery_history):
+            if order.struggle_score >= 40:
+                streak += 1
+            else:
+                break
+        return streak
+    
+    def _calculate_current_efficiency(self) -> float:
+        if not self.delivery_history:
+            return 50
+        recent_order = self.delivery_history[-1]
+        time_efficiency = recent_order.total_value / max(recent_order.total_production_time, 1) * 60
+        return min(100, time_efficiency)
+    
+    def _generate_interactive_elements(self) -> Dict:
+        return {
+            'adjustable_parameters': {
+                'struggle_target': {
+                    'current': self.current_struggle_score,
+                    'min': 0,
+                    'max': 100,
+                    'optimal_range': [40, 70]
+                },
+                'auto_generation': {
+                    'enabled': self.auto_generation,
+                    'description': 'Automatic order generation based on dynamic balancing'
+                }
+            },
+            'quick_actions': [
+                {'action': 'generate_truck_order', 'label': '트럭 주문 생성', 'icon': 'truck'},
+                {'action': 'generate_train_order', 'label': '기차 주문 생성', 'icon': 'train'},
+                {'action': 'simulate_time', 'label': '시간 경과 시뮬레이션', 'icon': 'clock'},
+                {'action': 'reset_balance', 'label': '밸런스 초기화', 'icon': 'refresh'}
+            ],
+            'detailed_views': [
+                {'view': 'resource_detail', 'label': '리소스 상세 보기'},
+                {'view': 'production_analysis', 'label': '생산 분석'},
+                {'view': 'pattern_analysis', 'label': '패턴 분석'},
+                {'view': 'township_comparison', 'label': 'Township 비교 분석'}
+            ]
+        }
+    
+    def _generate_performance_insights(self) -> Dict:
+        insights = []
+        if self.current_struggle_score > 80:
+            insights.append({'type': 'warning', 'title': '높은 스트레스 상태', 'message': '현재 스트러글 스코어가 높습니다.', 'priority': 'high'})
+        elif self.current_struggle_score < 20:
+            insights.append({'type': 'info', 'title': '도전 요소 부족', 'message': '현재 난이도가 낮습니다.', 'priority': 'medium'})
+        
+        return {
+            'insights': insights,
+            'key_metrics': {
+                'balance_score': self._calculate_overall_balance_score(),
+                'efficiency_score': self._calculate_system_efficiency(),
+                'stability_score': self._calculate_balance_stability()
+            },
+            'improvement_suggestions': self._generate_improvement_suggestions()
+        }
+    
+    def _generate_improvement_suggestions(self) -> List[str]:
+        suggestions = []
+        balance_score = self._calculate_overall_balance_score()
+        if balance_score < 70:
+            suggestions.append("전체적인 밸런스 개선이 필요합니다.")
+        efficiency = self._calculate_system_efficiency()
+        if efficiency < 60:
+            suggestions.append("시스템 효율성이 낮습니다.")
+        if not suggestions:
+            suggestions.append("현재 시스템이 잘 최적화되어 있습니다.")
+        return suggestions
+    
+    def _generate_township_comparison(self) -> Dict:
+        truck_orders = [o for o in self.delivery_history if o.delivery_type == DeliveryType.TRUCK]
+        train_orders = [o for o in self.delivery_history if o.delivery_type == DeliveryType.TRAIN]
+        return {
+            'design_philosophy': {
+                'hayday_approach': 'Low stress, cooperative gameplay',
+                'township_approach': 'Intentional friction, challenge-based progression',
+                'sungdae_implementation': 'Hybrid system with configurable difficulty'
+            },
+            'performance_comparison': {
+                'truck_orders': {'count': len(truck_orders), 'avg_value': sum(o.total_value for o in truck_orders) / max(1, len(truck_orders)), 'avg_struggle': sum(o.struggle_score for o in truck_orders) / max(1, len(truck_orders))},
+                'train_orders': {'count': len(train_orders), 'avg_value': sum(o.total_value for o in train_orders) / max(1, len(train_orders)), 'avg_struggle': sum(o.struggle_score for o in train_orders) / max(1, len(train_orders))},
+                'value_multiplier': (sum(o.total_value for o in train_orders) / max(1, len(train_orders))) / max(1, sum(o.total_value for o in truck_orders) / max(1, len(truck_orders)))
+            }
+        }
+    
+    def _generate_overall_craft_time_analysis(self) -> Dict:
+        all_items_analysis = {}
+        for item_name, item_data in self.hayday_items.items():
+            production_time = item_data.get('production_time', 300)
+            craft_score = self._calculate_craft_time_score(production_time)
+            all_items_analysis[item_name] = {
+                'production_time_seconds': production_time,
+                'production_time_minutes': production_time / 60,
+                'craft_time_score': craft_score,
+                'complexity_tier': self._get_complexity_tier(production_time),
+                'unlock_level': item_data.get('unlock_level', 1)
+            }
+        return {
+            'item_analysis': all_items_analysis,
+            'complexity_distribution': self._get_complexity_distribution(),
+            'time_efficiency_ranking': self._get_time_efficiency_ranking()
+        }
+    
+    def _generate_layer_score_summary(self) -> Dict:
+        layer_summary = {}
+        for layer in ItemLayer:
+            layer_items = [item for item, resource in self.resource_states.items() if resource.layer == layer]
+            if layer_items:
+                avg_stock = sum(self.resource_states[item].stock_ratio for item in layer_items) / len(layer_items)
+                deficit_count = len([item for item in layer_items if self.resource_states[item].is_deficit])
+                layer_summary[layer.value] = {
+                    'total_items': len(layer_items),
+                    'avg_stock_ratio': avg_stock,
+                    'deficit_items': deficit_count,
+                    'deficit_ratio': deficit_count / len(layer_items),
+                    'base_multiplier': {ItemLayer.CROPS: 1.0, ItemLayer.MID: 1.5, ItemLayer.TOP: 2.0}[layer]
+                }
+        return layer_summary
+    
+    def _get_complexity_tier(self, production_time: int) -> str:
+        if production_time < 600:
+            return 'Simple'
+        elif production_time < 3600:
+            return 'Moderate'
+        elif production_time < 7200:
+            return 'Complex'
+        else:
+            return 'Advanced'
+    
+    def _get_complexity_distribution(self) -> Dict:
+        distribution = {'Simple': 0, 'Moderate': 0, 'Complex': 0, 'Advanced': 0}
+        for item_data in self.hayday_items.values():
+            tier = self._get_complexity_tier(item_data.get('production_time', 300))
+            distribution[tier] += 1
+        return distribution
+    
+    def _get_time_efficiency_ranking(self) -> List[Dict]:
+        efficiency_data = []
+        for item_name, item_data in self.hayday_items.items():
+            value = item_data.get('sell_price', 100)
+            time = item_data.get('production_time', 300)
+            efficiency = value / max(time, 1) * 3600
+            efficiency_data.append({
+                'item': item_name,
+                'efficiency': efficiency,
+                'value': value,
+                'time': time,
+                'unlock_level': item_data.get('unlock_level', 1)
+            })
+        return sorted(efficiency_data, key=lambda x: x['efficiency'], reverse=True)[:10]
     
     def get_available_items(self) -> List[str]:
         """사용 가능한 아이템 목록"""
@@ -1482,3 +2127,134 @@ class SungDaeSimulator:
             return "밸런스 개선이 필요합니다. 스트러글 스코어나 아이템 구성을 조정해보세요."
         else:
             return "심각한 밸런스 문제가 있습니다. 전면적인 조정이 필요합니다."
+    
+    def _generate_craft_time_analysis(self, items: Dict[str, int]) -> Dict:
+        """제작 시간 분석 생성 (UI/UX 표시용)"""
+        analysis = {
+            'total_production_time': 0,
+            'avg_production_time': 0,
+            'complexity_distribution': {'simple': 0, 'moderate': 0, 'complex': 0},
+            'bottleneck_items': [],
+            'time_efficiency_score': 0
+        }
+        
+        total_time = 0
+        complex_items = []
+        
+        for item_name, quantity in items.items():
+            item_data = self.hayday_items.get(item_name, {})
+            production_time = item_data.get('production_time', 300)
+            item_total_time = production_time * quantity
+            total_time += item_total_time
+            
+            # 복잡도 분류
+            if production_time < 600:  # 10분 미만
+                analysis['complexity_distribution']['simple'] += 1
+            elif production_time < 3600:  # 1시간 미만
+                analysis['complexity_distribution']['moderate'] += 1
+            else:  # 1시간 이상
+                analysis['complexity_distribution']['complex'] += 1
+                complex_items.append({
+                    'item': item_name,
+                    'time': production_time,
+                    'quantity': quantity,
+                    'total_time': item_total_time
+                })
+        
+        analysis['total_production_time'] = total_time
+        analysis['avg_production_time'] = total_time / len(items) if items else 0
+        analysis['bottleneck_items'] = sorted(complex_items, key=lambda x: x['total_time'], reverse=True)[:3]
+        
+        # 시간 효율성 점수 (0-100)
+        if total_time < 3600:  # 1시간 미만
+            analysis['time_efficiency_score'] = 90
+        elif total_time < 7200:  # 2시간 미만
+            analysis['time_efficiency_score'] = 70
+        elif total_time < 14400:  # 4시간 미만
+            analysis['time_efficiency_score'] = 50
+        else:
+            analysis['time_efficiency_score'] = 30
+        
+        return analysis
+    
+    def _calculate_balance_impact(self, items: Dict[str, int], struggle_score: float) -> Dict:
+        """밸런스 영향도 계산 (UI/UX 표시용)"""
+        impact = {
+            'resource_impact': 'neutral',  # positive, neutral, negative
+            'struggle_impact': 'neutral',   # increases, maintains, decreases
+            'market_impact': 'balanced',    # oversupply, balanced, shortage
+            'recommendations': []
+        }
+        
+        # 리소스 영향 분석
+        deficit_items = 0
+        abundant_items = 0
+        
+        for item_name, quantity in items.items():
+            resource = self.resource_states.get(item_name)
+            if resource:
+                if resource.is_deficit:
+                    deficit_items += 1
+                elif resource.stock_ratio > 0.8:
+                    abundant_items += 1
+        
+        if deficit_items > abundant_items:
+            impact['resource_impact'] = 'negative'
+            impact['recommendations'].append('"부족한 자원이 많습니다. 생산 효율성을 높이는 것이 좋겠습니다."')
+        elif abundant_items > deficit_items:
+            impact['resource_impact'] = 'positive'
+            impact['recommendations'].append('"풍부한 자원을 활용한 좋은 밸런스입니다."')
+        else:
+            impact['resource_impact'] = 'neutral'
+        
+        # 스트러글 영향 분석
+        if struggle_score > 70:
+            impact['struggle_impact'] = 'increases'
+            impact['recommendations'].append('"높은 난이도로 인해 스트레스가 증가할 수 있습니다."')
+        elif struggle_score < 30:
+            impact['struggle_impact'] = 'decreases'
+            impact['recommendations'].append('"난이도가 낮아 더 도전적인 주문을 시도해볼 수 있습니다."')
+        else:
+            impact['struggle_impact'] = 'maintains'
+        
+        # 시장 영향 분석
+        total_value = sum(self.hayday_items.get(item, {}).get('sell_price', 100) * qty for item, qty in items.items())
+        if total_value > 2000:
+            impact['market_impact'] = 'shortage'
+            impact['recommendations'].append('"고가치 아이템들로 인한 시장 부족 예상."')
+        elif total_value < 500:
+            impact['market_impact'] = 'oversupply'
+        else:
+            impact['market_impact'] = 'balanced'
+        
+        return impact
+    
+    def _calculate_production_complexity_metadata(self, items: Dict[str, int]) -> Dict:
+        """생산 복잡도 메타데이터 (UI/UX 표시용)"""
+        metadata = {
+            'building_load': {},
+            'resource_chains': [],
+            'bottleneck_analysis': {},
+            'automation_score': 0
+        }
+        
+        # 건물별 부하 분석
+        building_loads = defaultdict(int)
+        
+        for item_name, quantity in items.items():
+            resource = self.resource_states.get(item_name)
+            if resource:
+                for building in resource.production_buildings:
+                    building_loads[building] += quantity
+        
+        metadata['building_load'] = dict(building_loads)
+        
+        # 자동화 점수 계산 (낮을수록 자동화 가능)
+        total_items = len(items)
+        complex_items = sum(1 for item in items.keys() 
+                          if self.resource_states.get(item, ResourceState('', ItemLayer.TOP, 0, 0, 0, [], False, False)).layer == ItemLayer.TOP)
+        
+        automation_score = max(0, 100 - (complex_items / total_items * 100))
+        metadata['automation_score'] = automation_score
+        
+        return metadata

@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}성대모드 - Township 다이나믹 밸런싱{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-6 fw-bold text-primary mb-4">
+            <i class="fas fa-train me-2"></i>성대모드 시뮬레이터
+            <span class="badge bg-success ms-2">Township v2.1</span>
+        </h1>
+        <p class="lead text-muted mb-4">다이나믹 밸런싱 시스템</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 시뮬레이터 컨트롤 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>성대모드 설정
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- 플레이어 레벨 -->
+                <div class="mb-3">
+                    <label class="form-label">플레이어 레벨</label>
+                    <input type="range" class="form-range" id="sungdae-player-level" min="1" max="100" value="50">
+                    <div class="d-flex justify-content-between">
+                        <small>1</small>
+                        <small id="sungdae-level-display">50</small>
+                        <small>100</small>
+                    </div>
+                </div>
+
+                <!-- 납품 타입 선택 -->
+                <div class="mb-3">
+                    <label class="form-label">납품 타입</label>
+                    <select class="form-select" id="sungdae-delivery-type">
+                        <option value="Truck">🚚 트럭 납품</option>
+                        <option value="Train">🚂 기차 납품</option>
+                    </select>
+                </div>
+
+                <!-- 스트러글 스코어 수동 설정 -->
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <label class="form-label mb-0 me-2">스트러글 스코어</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="manual-struggle">
+                            <label class="form-check-label" for="manual-struggle">수동</label>
+                        </div>
+                    </div>
+                    <input type="range" class="form-range" id="sungdae-struggle-score" min="0" max="100" value="50" disabled>
+                    <div class="d-flex justify-content-between">
+                        <small>쉬움 (0)</small>
+                        <small id="struggle-display">50</small>
+                        <small>어려움 (100)</small>
+                    </div>
+                </div>
+
+                <!-- 생성 버튼들 -->
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" onclick="generateSungdaeOrder()">
+                        <i class="fas fa-plus me-2"></i>단일 주문 생성
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="generateBatchOrders()">
+                        <i class="fas fa-layer-group me-2"></i>배치 생성 (5개)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 다이나믹 밸런싱 상태 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-balance-scale me-2"></i>다이나믹 밸런싱
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="dynamic-balancing-status">
+                    <!-- 밸런싱 지표 -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>압력 지수</small>
+                            <small id="pressure-index">-</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="pressure-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>희소성 지수</small>
+                            <small id="scarcity-index">-</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="scarcity-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>다양성 점수</small>
+                            <small id="diversity-score">-</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="diversity-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>효율성 등급</small>
+                            <small id="efficiency-rating">-</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="efficiency-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 시스템 상태 요약 -->
+                    <div id="sungdae-system-status" class="mt-3 p-2 bg-light rounded">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p class="mb-0 small">초기화 중...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 생성된 주문 표시 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>생성된 주문
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearSungdaeOrders()">
+                    <i class="fas fa-trash me-1"></i>모두 삭제
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="sungdae-orders-container">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-truck fa-2x mb-2"></i>
+                        <p>아직 생성된 주문이 없습니다.</p>
+                        <p class="small">위의 설정을 조정하고 주문을 생성해보세요.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 고급 컨트롤 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools me-2"></i>고급 컨트롤
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100" onclick="simulateTime(1)">
+                            <i class="fas fa-forward me-1"></i>1시간 경과
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-warning w-100" onclick="getAvailableItems()">
+                            <i class="fas fa-box me-1"></i>아이템 목록
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-success w-100" onclick="refreshSystemStatus()">
+                            <i class="fas fa-sync me-1"></i>상태 새로고침
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-secondary w-100" onclick="resetSimulator()">
+                            <i class="fas fa-undo me-1"></i>시뮬레이터 리셋
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 성대모드 전용 JavaScript
+let sungdaeOrders = [];
+
+// 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    // 레벨 슬라이더 이벤트
+    document.getElementById('sungdae-player-level').addEventListener('input', function() {
+        document.getElementById('sungdae-level-display').textContent = this.value;
+    });
+
+    // 스트러글 스코어 슬라이더 이벤트
+    document.getElementById('sungdae-struggle-score').addEventListener('input', function() {
+        document.getElementById('struggle-display').textContent = this.value;
+    });
+
+    // 수동 스트러글 스코어 토글
+    document.getElementById('manual-struggle').addEventListener('change', function() {
+        const slider = document.getElementById('sungdae-struggle-score');
+        slider.disabled = !this.checked;
+        
+        if (this.checked) {
+            // 수동 설정으로 스트러글 스코어 적용
+            adjustStruggleScore(slider.value);
+        }
+    });
+
+    // 초기 시스템 상태 로드
+    refreshSystemStatus();
+});
+
+// 단일 주문 생성
+function generateSungdaeOrder() {
+    const playerLevel = document.getElementById('sungdae-player-level').value;
+    const deliveryType = document.getElementById('sungdae-delivery-type').value;
+    const manualStruggle = document.getElementById('manual-struggle').checked;
+    const struggleScore = manualStruggle ? document.getElementById('sungdae-struggle-score').value : null;
+
+    const data = {
+        player_level: parseInt(playerLevel),
+        delivery_type: deliveryType,
+        struggle_score: struggleScore ? parseFloat(struggleScore) : null,
+        use_struggle_adjustment: true
+    };
+
+    fetch('/api/sungdae/generate-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addOrderToDisplay(data.order);
+            updateSystemStatus(data.system_status);
+        } else {
+            alert('주문 생성 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('API 요청 실패: ' + error);
+    });
+}
+
+// 배치 주문 생성
+function generateBatchOrders() {
+    const deliveryType = document.getElementById('sungdae-delivery-type').value;
+    const data = {
+        count: 5,
+        delivery_types: [deliveryType]
+    };
+
+    fetch('/api/sungdae/batch-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 배치 주문을 역순으로 추가해서 최신이 위에 오도록 함
+            data.orders.reverse().forEach(order => addOrderToDisplay(order));
+            updateSystemStatus(data.system_status);
+        } else {
+            alert('배치 생성 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('API 요청 실패: ' + error);
+    });
+}
+
+// 주문을 화면에 추가
+function addOrderToDisplay(order) {
+    // 최신 주문을 앞에 추가 (unshift 사용)
+    sungdaeOrders.unshift(order);
+    renderOrders();
+    // 다이나믹 밸런싱 데이터도 업데이트
+    if (order.dynamic_balancing_data) {
+        updateDynamicBalancingDisplay(order.dynamic_balancing_data);
+    }
+}
+
+// 주문 목록 렌더링
+function renderOrders() {
+    const container = document.getElementById('sungdae-orders-container');
+    
+    if (sungdaeOrders.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-truck fa-2x mb-2"></i>
+                <p>아직 생성된 주문이 없습니다.</p>
+                <p class="small">위의 설정을 조정하고 주문을 생성해보세요.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const ordersHtml = sungdaeOrders.map((order, index) => {
+        const difficultyColor = {
+            '쉬움': 'success',
+            '보통': 'primary', 
+            '어려움': 'warning',
+            '매우어려움': 'danger'
+        }[order.difficulty] || 'secondary';
+
+        const deliveryIcon = order.delivery_type === 'Train' ? 'fas fa-train' : 'fas fa-truck';
+        const deliveryColor = order.delivery_type === 'Train' ? 'info' : 'primary';
+
+        const itemsHtml = Object.entries(order.items).map(([item, quantity]) => 
+            `<span class="badge bg-light text-dark me-1">${item}: ${quantity}</span>`
+        ).join('');
+
+        // Township 기차 메타데이터 표시
+        let townshipInfo = '';
+        if (order.generation_metadata && order.generation_metadata.township_train_cars) {
+            const carInfo = order.generation_metadata.car_distribution;
+            townshipInfo = `
+                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                    <small class="text-info">
+                        <i class="fas fa-train me-1"></i>Township 기차: ${order.generation_metadata.township_train_cars}칸, 
+                        효율: ${carInfo ? carInfo.car_efficiency.toFixed(1) : 'N/A'}
+                    </small>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">
+                            <i class="${deliveryIcon} text-${deliveryColor} me-2"></i>주문 #${order.id}
+                        </h6>
+                        <div>
+                            <span class="badge bg-${difficultyColor}">${order.difficulty}</span>
+                            <span class="badge bg-${deliveryColor} ms-1">${order.delivery_type}</span>
+                        </div>
+                    </div>
+                    <p class="card-text mb-2">${itemsHtml}</p>
+                    <div class="row text-muted small">
+                        <div class="col-md-4">
+                            <i class="fas fa-coins me-1"></i>가치: ${order.total_value}
+                        </div>
+                        <div class="col-md-4">
+                            <i class="fas fa-chart-line me-1"></i>스트러글: ${order.struggle_score.toFixed(1)}
+                        </div>
+                        <div class="col-md-4">
+                            <i class="fas fa-clock me-1"></i>만료: ${order.expiry_time || 60}분
+                        </div>
+                    </div>
+                    ${townshipInfo}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = ordersHtml;
+}
+
+// 시스템 상태 업데이트
+function updateSystemStatus(status) {
+    const container = document.getElementById('sungdae-system-status');
+    
+    const healthColor = status.resource_health.deficit > status.resource_health.healthy ? 'danger' : 'success';
+    
+    container.innerHTML = `
+        <div class="row g-1">
+            <div class="col-6">
+                <div class="text-center">
+                    <div class="fs-6 fw-bold">${status.current_struggle_score.toFixed(1)}</div>
+                    <small class="text-muted" style="font-size: 0.7rem">스트러글</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center">
+                    <div class="fs-6 fw-bold">${status.total_orders_generated}</div>
+                    <small class="text-muted" style="font-size: 0.7rem">총 주문</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center">
+                    <div class="fs-6 fw-bold text-${healthColor}">${status.deficit_items_count}</div>
+                    <small class="text-muted" style="font-size: 0.7rem">부족</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center">
+                    <div class="fs-6 fw-bold">${status.average_struggle_score.toFixed(1)}</div>
+                    <small class="text-muted" style="font-size: 0.7rem">평균</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 다이나믹 밸런싱 데이터가 있으면 업데이트
+    if (status.dynamic_balancing_data) {
+        updateDynamicBalancingDisplay(status.dynamic_balancing_data);
+    }
+}
+
+// 다이나믹 밸런싱 디스플레이 업데이트
+function updateDynamicBalancingDisplay(data) {
+    if (!data || !data.balancing_metrics) return;
+    
+    const metrics = data.balancing_metrics;
+    
+    // 압력 지수 업데이트
+    if (metrics.pressure_index !== undefined) {
+        document.getElementById('pressure-index').textContent = metrics.pressure_index.toFixed(1);
+        const pressureBar = document.getElementById('pressure-bar');
+        pressureBar.style.width = `${Math.min(100, metrics.pressure_index)}%`;
+        pressureBar.className = `progress-bar ${metrics.pressure_index > 70 ? 'bg-danger' : metrics.pressure_index > 40 ? 'bg-warning' : 'bg-success'}`;
+    }
+    
+    // 희소성 지수 업데이트
+    if (metrics.scarcity_index !== undefined) {
+        document.getElementById('scarcity-index').textContent = metrics.scarcity_index.toFixed(1);
+        document.getElementById('scarcity-bar').style.width = `${Math.min(100, metrics.scarcity_index)}%`;
+    }
+    
+    // 다양성 점수 업데이트
+    if (metrics.diversity_score !== undefined) {
+        document.getElementById('diversity-score').textContent = metrics.diversity_score.toFixed(1);
+        document.getElementById('diversity-bar').style.width = `${Math.min(100, metrics.diversity_score)}%`;
+    }
+    
+    // 효율성 등급 업데이트
+    if (metrics.efficiency_rating !== undefined) {
+        document.getElementById('efficiency-rating').textContent = metrics.efficiency_rating.toFixed(1);
+        document.getElementById('efficiency-bar').style.width = `${Math.min(100, metrics.efficiency_rating)}%`;
+    }
+}
+
+// 스트러글 스코어 조정
+function adjustStruggleScore(newScore) {
+    fetch('/api/sungdae/adjust-struggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ struggle_score: parseFloat(newScore) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateSystemStatus(data.system_status);
+        } else {
+            alert('스트러글 스코어 조정 실패: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 시간 시뮬레이션
+function simulateTime(hours) {
+    fetch('/api/sungdae/simulate-time', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hours: hours })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateSystemStatus(data.system_status);
+            alert(data.message);
+        } else {
+            alert('시간 시뮬레이션 실패: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 사용 가능한 아이템 목록
+function getAvailableItems() {
+    fetch('/api/sungdae/available-items')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const itemsInfo = data.items.map(item => 
+                `${item.name} (${item.layer}, 재고: ${item.current_stock}/${item.max_capacity})`
+            ).join('\n');
+            
+            alert(`총 ${data.total_count}개 아이템:\n\n${itemsInfo.substring(0, 1000)}${data.items.length > 20 ? '\n...' : ''}`);
+        } else {
+            alert('아이템 목록 조회 실패: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 시스템 상태 새로고침
+function refreshSystemStatus() {
+    fetch('/api/sungdae/stats')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateSystemStatus(data.status);
+        } else {
+            console.error('시스템 상태 조회 실패:', data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 주문 목록 비우기
+function clearSungdaeOrders() {
+    if (confirm('모든 주문을 삭제하시겠습니까?')) {
+        sungdaeOrders = [];
+        renderOrders();
+    }
+}
+
+// 시뮬레이터 리셋 (실제로는 페이지 새로고침)
+function resetSimulator() {
+    if (confirm('시뮬레이터를 리셋하시겠습니까?')) {
+        location.reload();
+    }
+}
+</script>
+{% endblock %}

@@ -18,8 +18,10 @@ import time
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 try:
     from hayday_simulator import HayDaySimulator, DeliveryType, DifficultyType
-except ImportError:
-    print("⚠️ hayday_simulator.py를 찾을 수 없습니다. 상위 디렉토리에 있는지 확인하세요.")
+    from sungdae_simulator import SungDaeSimulator, DeliveryType as SungDaeDeliveryType, DeliveryDifficulty
+except ImportError as e:
+    print(f"⚠️ 시뮬레이터 모듈을 찾을 수 없습니다: {e}")
+    print("상위 디렉토리에 hayday_simulator.py와 sungdae_simulator.py가 있는지 확인하세요.")
     sys.exit(1)
 
 app = Flask(__name__)
@@ -66,15 +68,21 @@ class Localization:
 
 # 전역 시뮬레이터 인스턴스
 simulator = None
+sungdae_simulator = None
 localization = None
 simulation_data = {"status": "ready", "results": None}
 
 def init_simulator():
     """시뮬레이터 및 로컬라이제이션 초기화"""
-    global simulator, localization
+    global simulator, localization, sungdae_simulator
     try:
         simulator = HayDaySimulator()
         print("Simulator initialization completed")
+        
+        # SungDae 시뮬레이터 초기화 (실제 HayDay 아이템 데이터 사용)
+        hayday_items = simulator.get_all_items_data()
+        sungdae_simulator = SungDaeSimulator(hayday_items=hayday_items, player_level=50)
+        print(f"SungDae Simulator initialization completed with {len(hayday_items)} items")
         
         # 로컬라이제이션 초기화 - 상대 경로 사용 (core_data 디렉토리 사용)
         localization_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data")
@@ -92,6 +100,11 @@ def index():
 def dashboard():
     """대시보드 페이지"""
     return render_template('dashboard.html')
+
+@app.route('/sungdae')
+def sungdae():
+    """SungDae 모드 시뮬레이터 페이지"""
+    return render_template('sungdae.html')
 
 # 시뮬레이션과 생산 체인 라우트 비활성화
 """
@@ -632,6 +645,206 @@ def generate_order_live():
         else:
             return jsonify({"success": False, "error": "Failed to generate order"})
             
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# SungDae 시뮬레이터 API 라우트
+@app.route('/api/sungdae/generate-order', methods=['POST'])
+def sungdae_generate_order():
+    """SungDae 시뮬레이터 단일 주문 생성"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    data = request.get_json()
+    player_level = data.get('player_level', 50)
+    delivery_type_str = data.get('delivery_type', 'Truck')
+    struggle_score = data.get('struggle_score', None)
+    use_struggle_adjustment = data.get('use_struggle_adjustment', True)
+    
+    try:
+        # DeliveryType 변환
+        delivery_type = SungDaeDeliveryType.TRAIN if delivery_type_str == 'Train' else SungDaeDeliveryType.TRUCK
+        
+        # 플레이어 레벨 업데이트
+        sungdae_simulator.player_level = player_level
+        
+        # 스트러글 스코어 수동 설정
+        if struggle_score is not None:
+            sungdae_simulator.adjust_user_struggle_score(float(struggle_score))
+        
+        # 주문 생성
+        order = sungdae_simulator.generate_delivery_order(
+            delivery_type=delivery_type,
+            use_struggle_adjustment=use_struggle_adjustment
+        )
+        
+        if order:
+            # 시스템 상태 가져오기
+            status = sungdae_simulator.get_system_status()
+            
+            # 다이나믹 밸런싱 데이터 추가
+            if hasattr(sungdae_simulator, 'get_dynamic_balancing_display_data'):
+                status['dynamic_balancing_data'] = sungdae_simulator.get_dynamic_balancing_display_data()
+            
+            return jsonify({
+                "success": True,
+                "order": {
+                    "id": order.order_id,
+                    "delivery_type": order.delivery_type.value,
+                    "difficulty": order.difficulty.value,
+                    "total_value": order.total_value,
+                    "struggle_score": order.struggle_score,
+                    "level_requirement": order.level_requirement,
+                    "avg_production_time": order.avg_production_time,
+                    "total_production_time": order.total_production_time,
+                    "expiry_time": order.expiry_time,
+                    "items": dict(order.items),
+                    "generation_metadata": order.generation_metadata
+                },
+                "system_status": status
+            })
+        else:
+            return jsonify({"success": False, "error": "Failed to generate order"})
+            
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/batch-orders', methods=['POST'])
+def sungdae_batch_orders():
+    """SungDae 시뮬레이터 배치 주문 생성"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    data = request.get_json()
+    count = data.get('count', 5)
+    delivery_types = data.get('delivery_types', ['Truck', 'Train'])
+    
+    try:
+        orders = []
+        for i in range(count):
+            # 랜덤 납품 타입 선택
+            import random
+            delivery_type_str = random.choice(delivery_types)
+            delivery_type = SungDaeDeliveryType.TRAIN if delivery_type_str == 'Train' else SungDaeDeliveryType.TRUCK
+            
+            order = sungdae_simulator.generate_delivery_order(delivery_type=delivery_type)
+            
+            if order:
+                orders.append({
+                    "id": order.order_id,
+                    "delivery_type": order.delivery_type.value,
+                    "difficulty": order.difficulty.value,
+                    "total_value": order.total_value,
+                    "struggle_score": order.struggle_score,
+                    "items": dict(order.items),
+                    "generation_metadata": order.generation_metadata
+                })
+        
+        return jsonify({
+            "success": True,
+            "orders": orders,
+            "system_status": sungdae_simulator.get_system_status()
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/adjust-struggle', methods=['POST'])
+def sungdae_adjust_struggle():
+    """SungDae 스트러글 스코어 조정"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    data = request.get_json()
+    new_score = data.get('struggle_score', 50.0)
+    
+    try:
+        adjustment = sungdae_simulator.adjust_user_struggle_score(float(new_score))
+        # 시스템 상태 가져오기
+        status = sungdae_simulator.get_system_status()
+        
+        # 다이나믹 밸런싱 데이터 추가
+        if hasattr(sungdae_simulator, 'get_dynamic_balancing_display_data'):
+            status['dynamic_balancing_data'] = sungdae_simulator.get_dynamic_balancing_display_data()
+        
+        return jsonify({
+            "success": True,
+            "adjustment": adjustment,
+            "system_status": status
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/stats')
+def sungdae_stats():
+    """SungDae 시스템 상태 조회"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    try:
+        # 시스템 상태 가져오기
+        status = sungdae_simulator.get_system_status()
+        
+        # 다이나믹 밸런싱 데이터 추가
+        if hasattr(sungdae_simulator, 'get_dynamic_balancing_display_data'):
+            status['dynamic_balancing_data'] = sungdae_simulator.get_dynamic_balancing_display_data()
+        
+        return jsonify({
+            "success": True,
+            "status": status
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/simulate-time', methods=['POST'])
+def sungdae_simulate_time():
+    """SungDae 시간 경과 시뮬레이션"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    data = request.get_json()
+    hours = data.get('hours', 1)
+    
+    try:
+        sungdae_simulator.simulate_time_progression(hours=hours)
+        return jsonify({
+            "success": True,
+            "message": f"{hours}시간 경과 시뮬레이션 완료",
+            "system_status": sungdae_simulator.get_system_status()
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/available-items')
+def sungdae_available_items():
+    """SungDae 사용 가능한 아이템 목록"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    try:
+        items = []
+        for item_name, resource in sungdae_simulator.resource_states.items():
+            items.append({
+                "name": item_name,
+                "layer": resource.layer.value,
+                "current_stock": resource.current_stock,
+                "max_capacity": resource.max_capacity,
+                "stock_ratio": resource.stock_ratio,
+                "is_deficit": resource.is_deficit,
+                "production_time": resource.production_time,
+                "shelf_available": resource.shelf_available,
+                "market_available": resource.market_available
+            })
+        
+        return jsonify({
+            "success": True,
+            "items": items,
+            "total_count": len(items)
+        })
+        
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 

@@ -837,6 +837,125 @@ class HayDaySimulator:
         except Exception:
             return 0
     
+    def get_all_items_data(self) -> Dict[str, Dict]:
+        """모든 아이템의 상세 정보를 반환 (SungDae 시뮬레이터용)"""
+        items_data = {}
+        
+        # 모든 데이터에서 아이템 정보 추출
+        for key, df in self.data.items():
+            if df.empty:
+                continue
+                
+            # 이벤트 관련 데이터는 건너뛰기
+            if any(event in key.lower() for event in ['countyfair', 'dummy', 'seasonal', 'event']):
+                continue
+            
+            # 농작물 (fields)
+            if key == 'fields':
+                for _, item in df.iterrows():
+                    if pd.notna(item.get('Name')):
+                        name = str(item.get('Name'))
+                        # 안전한 숫자 변환
+                        sell_price = item.get('SellPrice', 1)
+                        grow_time = item.get('GrowTime', 10)
+                        unlock_level = item.get('UnlockLevel', 1)
+                        
+                        try:
+                            sell_price = int(float(sell_price)) if pd.notna(sell_price) else 1
+                        except (ValueError, TypeError):
+                            sell_price = 1
+                            
+                        try:
+                            grow_time = int(float(grow_time)) if pd.notna(grow_time) else 10
+                        except (ValueError, TypeError):
+                            grow_time = 10
+                            
+                        try:
+                            unlock_level = int(float(unlock_level)) if pd.notna(unlock_level) else 1
+                        except (ValueError, TypeError):
+                            unlock_level = 1
+                        
+                        items_data[name] = {
+                            'base_price': sell_price,
+                            'production_time': grow_time,
+                            'layer': 'CROPS',
+                            'unlock_level': unlock_level,
+                            'category': 'crops'
+                        }
+            
+            # 과일 (fruits, fruit_trees)
+            elif key in ['fruits', 'fruit_trees']:
+                for _, item in df.iterrows():
+                    if pd.notna(item.get('Name')):
+                        name = str(item.get('Name'))
+                        # 안전한 숫자 변환
+                        sell_price = item.get('SellPrice', 2)
+                        grow_time = item.get('GrowTime', 20)
+                        unlock_level = item.get('UnlockLevel', 1)
+                        
+                        try:
+                            sell_price = int(float(sell_price)) if pd.notna(sell_price) else 2
+                        except (ValueError, TypeError):
+                            sell_price = 2
+                            
+                        try:
+                            grow_time = int(float(grow_time)) if pd.notna(grow_time) else 20
+                        except (ValueError, TypeError):
+                            grow_time = 20
+                            
+                        try:
+                            unlock_level = int(float(unlock_level)) if pd.notna(unlock_level) else 1
+                        except (ValueError, TypeError):
+                            unlock_level = 1
+                        
+                        items_data[name] = {
+                            'base_price': sell_price,
+                            'production_time': grow_time,
+                            'layer': 'CROPS',
+                            'unlock_level': unlock_level,
+                            'category': 'fruits'
+                        }
+            
+            # 동물 제품 (animals)
+            elif key == 'animals':
+                for _, animal in df.iterrows():
+                    if pd.notna(animal.get('Good')):
+                        name = str(animal.get('Good'))
+                        items_data[name] = {
+                            'base_price': int(pd.to_numeric(animal.get('SellPrice', 5), errors='coerce') or 5),
+                            'production_time': int(pd.to_numeric(animal.get('ProductionTime', 30), errors='coerce') or 30),
+                            'layer': 'CROPS',
+                            'unlock_level': int(pd.to_numeric(animal.get('UnlockLevel', 1), errors='coerce') or 1),
+                            'category': 'animal_products'
+                        }
+            
+            # 생산 건물 제품들 (가공품 = MID layer)
+            else:
+                for _, item in df.iterrows():
+                    # Good 컬럼이 있는 경우
+                    if pd.notna(item.get('Good')):
+                        name = str(item.get('Good'))
+                        production_time = int(pd.to_numeric(item.get('ProductionTime', 60), errors='coerce') or 60)
+                        sell_price = int(pd.to_numeric(item.get('SellPrice', 10), errors='coerce') or 10)
+                        
+                        # 가격과 생산시간으로 레이어 분류
+                        if sell_price >= 100 or production_time >= 240:  # 고급품
+                            layer = 'TOP'
+                        elif sell_price >= 20 or production_time >= 30:  # 중급품
+                            layer = 'MID'
+                        else:  # 기본품
+                            layer = 'CROPS'
+                        
+                        items_data[name] = {
+                            'base_price': sell_price,
+                            'production_time': production_time,
+                            'layer': layer,
+                            'unlock_level': int(pd.to_numeric(item.get('UnlockLevel', 1), errors='coerce') or 1),
+                            'category': key
+                        }
+        
+        return items_data
+    
     def _get_item_unlock_level(self, item_name: str) -> int:
         """Item 언락레벨 조회 (CSV 데이터 기반)"""
         try:
