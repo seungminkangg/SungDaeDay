@@ -238,6 +238,29 @@
             return new Intl.NumberFormat('ko-KR').format(num);
         }
         
+        function formatProductionTime(timeInSeconds) {
+            if (!timeInSeconds || timeInSeconds === 0) return '즉시';
+            
+            const totalMinutes = Math.ceil(timeInSeconds / 60);
+            
+            if (totalMinutes < 60) {
+                return `${totalMinutes}분`;
+            } else if (totalMinutes < 1440) {  // 24시간 미만
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                return minutes > 0 ? `${hours}시간 ${minutes}분` : `${hours}시간`;
+            } else {  // 24시간 이상
+                const days = Math.floor(totalMinutes / 1440);
+                const remainingMinutes = totalMinutes % 1440;
+                const hours = Math.floor(remainingMinutes / 60);
+                if (hours > 0) {
+                    return `${days}일 ${hours}시간`;
+                } else {
+                    return `${days}일`;
+                }
+            }
+        }
+        
         function updateStats() {
             fetch('/api/stats')
                 .then(response => response.json())

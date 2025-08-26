@@ -744,7 +744,7 @@ class SungDaeSimulator:
         return analysis
     
     def _perform_source_tagging(self, resource_analysis: Dict) -> Dict:
-        """2단계: 소스 태깅 (획득 가능 소스별 아이템 분류)"""
+        """2-4단계: 고도화된 소스 태깅 시스템 (PDF Steps 2-4 구현)"""
         source_tags = {
             ResourceSource.STORAGE: [],
             ResourceSource.SHELF: [],
@@ -752,71 +752,833 @@ class SungDaeSimulator:
             ResourceSource.PRODUCTION: []
         }
         
+        # 고급 소스 점수 계산을 위한 데이터 수집
+        source_scores = {}
+        production_complexity = {}
+        availability_metrics = {}
+        
         for item_name, resource in self.resource_states.items():
-            # 창고에 충분한 재고가 있는 경우
-            if resource.current_stock >= 3:
-                source_tags[ResourceSource.STORAGE].append(item_name)
+            if not self._is_valid_item(item_name) or not self._is_unlocked_item(item_name):
+                continue
+                
+            # 소스별 점수 계산
+            source_scores[item_name] = {}
             
-            # 진열대에서 구매 가능한 경우
-            if resource.shelf_available:
-                source_tags[ResourceSource.SHELF].append(item_name)
+            # STORAGE 점수 계산 (재고 기반, 재고 수량과 안정성 고려)
+            storage_score = self._calculate_storage_source_score(resource)
+            source_scores[item_name][ResourceSource.STORAGE] = storage_score
             
-            # 마켓에서 구매 가능한 경우
-            if resource.market_available:
-                source_tags[ResourceSource.MARKET].append(item_name)
+            # SHELF 점수 계산 (구매 접근성과 비용 효율성)
+            shelf_score = self._calculate_shelf_source_score(resource)
+            source_scores[item_name][ResourceSource.SHELF] = shelf_score
             
-            # 생산이 필요한 경우 (재고 부족)
-            if resource.current_stock < 5 or resource.is_deficit:
-                source_tags[ResourceSource.PRODUCTION].append(item_name)
+            # MARKET 점수 계산 (시장 변동성과 가용성)
+            market_score = self._calculate_market_source_score(resource)
+            source_scores[item_name][ResourceSource.MARKET] = market_score
+            
+            # PRODUCTION 점수 계산 (생산 복잡도와 시간 비용)
+            production_score = self._calculate_production_source_score(resource, item_name)
+            source_scores[item_name][ResourceSource.PRODUCTION] = production_score
+            
+            # 최고 점수의 소스에 아이템 할당 (다중 소스 가능)
+            max_score = max(source_scores[item_name].values())
+            threshold = max_score * 0.8  # 80% 이상 점수를 가진 모든 소스 포함
+            
+            for source, score in source_scores[item_name].items():
+                if score >= threshold and score > 0.2:  # 최소 임계값
+                    source_tags[source].append(item_name)
+        
+        # 소스 태깅 품질 검증 및 최적화
+        source_tags = self._optimize_source_distribution(source_tags, source_scores)
         
         return source_tags
     
+    def _calculate_storage_source_score(self, resource) -> float:
+        """STORAGE 소스 점수 계산 - 재고량과 안정성 기반"""
+        if resource.current_stock <= 0:
+            return 0.0
+        
+        # 기본 재고 점수 (0-1.0)
+        stock_ratio_score = min(resource.stock_ratio, 1.0)
+        
+        # 절대 재고량 보너스 (대량 재고에 대한 보너스)
+        absolute_stock_bonus = min(resource.current_stock / 20.0, 0.3)
+        
+        # 안정성 점수 (재고가 충분할수록 높음)
+        stability_score = 0.0
+        if resource.current_stock >= 10:
+            stability_score = 0.4
+        elif resource.current_stock >= 5:
+            stability_score = 0.2
+        
+        # 종합 점수 (최대 1.0)
+        total_score = min(stock_ratio_score + absolute_stock_bonus + stability_score, 1.0)
+        return total_score
+    
+    def _calculate_shelf_source_score(self, resource) -> float:
+        """SHELF 소스 점수 계산 - 구매 접근성과 효율성"""
+        if not resource.shelf_available:
+            return 0.0
+        
+        base_score = 0.7  # 진열대 기본 점수
+        
+        # 비용 효율성 (낮은 가격일수록 높은 점수)
+        price = self.hayday_items.get(resource.item_name, {}).get('sell_price', 100)
+        cost_efficiency = max(0.0, 0.3 - (price / 300.0))  # 가격이 높을수록 페널티
+        
+        # 재고 부족 보너스 (재고가 부족할 때 구매 유인)
+        shortage_bonus = 0.0
+        if resource.current_stock < 3:
+            shortage_bonus = 0.2
+        elif resource.current_stock < 1:
+            shortage_bonus = 0.4
+        
+        total_score = min(base_score + cost_efficiency + shortage_bonus, 1.0)
+        return total_score
+    
+    def _calculate_market_source_score(self, resource) -> float:
+        """MARKET 소스 점수 계산 - 시장 변동성과 가용성"""
+        if not resource.market_available:
+            return 0.0
+        
+        base_score = 0.5  # 마켓 기본 점수 (진열대보다 낮음)
+        
+        # 마켓 변동성 고려 (일반적으로 더 비싸지만 가용성 높음)
+        availability_bonus = 0.3
+        
+        # 긴급 구매 보너스 (심각한 부족 상태)
+        emergency_bonus = 0.0
+        if resource.is_deficit and resource.current_stock == 0:
+            emergency_bonus = 0.5
+        elif resource.current_stock < 2:
+            emergency_bonus = 0.3
+        
+        total_score = min(base_score + availability_bonus + emergency_bonus, 1.0)
+        return total_score
+    
+    def _calculate_production_source_score(self, resource, item_name: str) -> float:
+        """PRODUCTION 소스 점수 계산 - 생산 복잡도와 시간 비용"""
+        # 기본 생산 점수
+        base_score = 0.6
+        
+        # 생산 시간 페널티 (긴 생산시간일수록 낮은 점수)
+        production_time = self.hayday_items.get(item_name, {}).get('production_time', 300)
+        time_penalty = min(production_time / 86400.0, 0.4)  # 하루(86400초) 기준으로 페널티
+        
+        # 재고 부족도에 따른 생산 우선순위
+        shortage_incentive = 0.0
+        if resource.is_deficit:
+            shortage_incentive = 0.4
+        elif resource.current_stock < 3:
+            shortage_incentive = 0.2
+        
+        # 건물 압박도 고려 (생산 건물이 바쁘면 점수 감소)
+        building_penalty = 0.0
+        buildings = self.hayday_items.get(item_name, {}).get('buildings', ['farm'])
+        if buildings and len(buildings) > 0:
+            building_name = buildings[0]
+            if building_name in self.production_pressures:
+                pressure = self.production_pressures[building_name].pressure_level
+                building_penalty = pressure * 0.3  # 높은 압박일수록 페널티
+        
+        # 효율성 보너스 (빠르고 가치 높은 아이템)
+        efficiency_bonus = 0.0
+        price = self.hayday_items.get(item_name, {}).get('sell_price', 1)
+        if production_time > 0:
+            value_per_minute = price / (production_time / 60.0)
+            if value_per_minute > 2.0:
+                efficiency_bonus = 0.2
+        
+        total_score = max(0.0, base_score - time_penalty + shortage_incentive - building_penalty + efficiency_bonus)
+        return min(total_score, 1.0)
+    
+    def _optimize_source_distribution(self, source_tags: Dict, source_scores: Dict) -> Dict:
+        """소스 분배 최적화 - 균형잡힌 소스 활용 보장"""
+        # 각 소스별 아이템 수 확인
+        source_counts = {source: len(items) for source, items in source_tags.items()}
+        total_items = sum(source_counts.values())
+        
+        if total_items == 0:
+            return source_tags
+        
+        # 목표 분배 비율 (선호도 기반)
+        target_ratios = {
+            ResourceSource.STORAGE: 0.4,   # 재고 우선
+            ResourceSource.SHELF: 0.3,     # 구매 가능
+            ResourceSource.MARKET: 0.2,    # 시장 구매
+            ResourceSource.PRODUCTION: 0.1  # 생산 최소화
+        }
+        
+        # 심각한 불균형이 있는 경우 재조정
+        for source, target_ratio in target_ratios.items():
+            current_ratio = source_counts[source] / total_items if total_items > 0 else 0
+            
+            # 목표 비율에서 크게 벗어난 경우 조정
+            if current_ratio < target_ratio * 0.5:  # 목표의 50% 미만
+                # 다른 소스에서 적합한 아이템 이전
+                self._rebalance_source_allocation(source_tags, source_scores, source, target_ratio)
+        
+        return source_tags
+    
+    def _rebalance_source_allocation(self, source_tags: Dict, source_scores: Dict, 
+                                   target_source: ResourceSource, target_ratio: float):
+        """특정 소스의 할당량 재조정"""
+        # 다른 소스에서 점수가 높은 아이템을 찾아서 이전
+        for item_name, scores in source_scores.items():
+            if item_name in source_tags[target_source]:
+                continue
+                
+            target_score = scores.get(target_source, 0.0)
+            if target_score > 0.5:  # 충분히 높은 점수
+                # 현재 할당된 소스들의 점수와 비교
+                current_sources = [s for s in ResourceSource if item_name in source_tags[s]]
+                
+                should_transfer = False
+                for current_source in current_sources:
+                    current_score = scores.get(current_source, 0.0)
+                    if target_score > current_score * 1.2:  # 20% 이상 높은 점수
+                        source_tags[current_source].remove(item_name)
+                        should_transfer = True
+                        break
+                
+                if should_transfer:
+                    source_tags[target_source].append(item_name)
+    
     def _calculate_production_pressure(self) -> Dict:
-        """3단계: 생산 압박 계산"""
+        """5단계: 고도화된 생산 압박 분배 시스템 (PDF Step 5 구현)"""
         pressure_analysis = {
             'high_pressure_buildings': [],
             'medium_pressure_buildings': [],
             'low_pressure_buildings': [],
-            'overall_pressure': 0.0
+            'overall_pressure': 0.0,
+            'pressure_distribution': {},
+            'bottleneck_analysis': {},
+            'capacity_utilization': {},
+            'production_efficiency': {}
         }
         
+        # 1. 동적 압박도 계산
+        building_pressures = self._calculate_dynamic_building_pressures()
+        
+        # 2. 상호 의존성 분석 
+        interdependency_map = self._analyze_production_interdependencies()
+        
+        # 3. 시간 기반 압박도 계산
+        time_based_pressures = self._calculate_time_based_pressures()
+        
+        # 4. 통합 압박도 계산
+        integrated_pressures = self._integrate_pressure_metrics(
+            building_pressures, interdependency_map, time_based_pressures
+        )
+        
         total_pressure = 0.0
-        for building_name, pressure in self.production_pressures.items():
-            if pressure.pressure_level > 0.8:
+        building_count = 0
+        
+        for building_name, pressure_data in integrated_pressures.items():
+            final_pressure = pressure_data['final_pressure']
+            
+            # 압박도 카테고리 분류
+            if final_pressure > 0.8:
                 pressure_analysis['high_pressure_buildings'].append(building_name)
-            elif pressure.pressure_level > 0.5:
+                category = 'high'
+            elif final_pressure > 0.5:
                 pressure_analysis['medium_pressure_buildings'].append(building_name)
+                category = 'medium'
             else:
                 pressure_analysis['low_pressure_buildings'].append(building_name)
+                category = 'low'
             
-            total_pressure += pressure.pressure_level
+            # 상세 분석 데이터 저장
+            pressure_analysis['pressure_distribution'][building_name] = {
+                'category': category,
+                'final_pressure': final_pressure,
+                'base_pressure': pressure_data['base_pressure'],
+                'interdependency_factor': pressure_data['interdependency_factor'],
+                'time_factor': pressure_data['time_factor'],
+                'bottlenecks': pressure_data.get('bottlenecks', []),
+                'efficiency_score': pressure_data.get('efficiency_score', 0.0)
+            }
+            
+            total_pressure += final_pressure
+            building_count += 1
         
-        pressure_analysis['overall_pressure'] = total_pressure / len(self.production_pressures)
+        pressure_analysis['overall_pressure'] = total_pressure / max(building_count, 1)
+        
+        # 5. 병목 구간 식별 및 분석
+        pressure_analysis['bottleneck_analysis'] = self._identify_production_bottlenecks(integrated_pressures)
+        
+        # 6. 용량 활용도 분석
+        pressure_analysis['capacity_utilization'] = self._analyze_capacity_utilization(integrated_pressures)
+        
+        # 7. 생산 효율성 평가
+        pressure_analysis['production_efficiency'] = self._evaluate_production_efficiency(integrated_pressures)
+        
         return pressure_analysis
     
+    def _calculate_dynamic_building_pressures(self) -> Dict:
+        """동적 건물 압박도 계산"""
+        building_pressures = {}
+        
+        for building_name, pressure in self.production_pressures.items():
+            # 기본 압박도
+            base_pressure = pressure.pressure_level
+            
+            # 대기열 길이 기반 압박도 증가
+            queue_pressure = min(len(pressure.items_in_queue) / 10.0, 0.3)
+            
+            # 용량 활용도
+            capacity_utilization = pressure.current_load
+            
+            # 최근 활동 기반 압박도 (시뮬레이션)
+            recent_activity = min(pressure.current_load * 1.2, 1.0)
+            
+            building_pressures[building_name] = {
+                'base_pressure': base_pressure,
+                'queue_pressure': queue_pressure,
+                'capacity_utilization': capacity_utilization,
+                'recent_activity': recent_activity,
+                'combined_pressure': min(base_pressure + queue_pressure + (capacity_utilization * 0.2), 1.0)
+            }
+        
+        return building_pressures
+    
+    def _analyze_production_interdependencies(self) -> Dict:
+        """생산 상호 의존성 분석"""
+        interdependency_map = {}
+        
+        # 아이템별 생산 체인 분석
+        for item_name, item_data in self.hayday_items.items():
+            if not self._is_valid_item(item_name):
+                continue
+                
+            buildings = item_data.get('buildings', ['farm'])
+            if not buildings:
+                continue
+                
+            primary_building = buildings[0]
+            
+            if primary_building not in interdependency_map:
+                interdependency_map[primary_building] = {
+                    'dependent_items': [],
+                    'complexity_score': 0.0,
+                    'interdependency_factor': 0.0,
+                    'upstream_dependencies': [],
+                    'downstream_impacts': []
+                }
+            
+            # 생산 복잡도 계산
+            production_time = item_data.get('production_time', 300)
+            complexity = min(production_time / 3600.0, 2.0)  # 시간 기준 복잡도
+            
+            interdependency_map[primary_building]['dependent_items'].append(item_name)
+            interdependency_map[primary_building]['complexity_score'] += complexity
+            
+            # 상위/하위 의존성 체크 (간단한 휴리스틱)
+            if 'Feed' in item_name or 'Sugar' in item_name or 'Bread' in item_name:
+                interdependency_map[primary_building]['upstream_dependencies'].append(item_name)
+            
+            if item_name in ['Wheat', 'Corn', 'Milk', 'Egg']:  # 기본 원자재
+                interdependency_map[primary_building]['downstream_impacts'].append(item_name)
+        
+        # 상호의존성 팩터 계산
+        for building, data in interdependency_map.items():
+            # 의존성 복잡도 기반 팩터
+            item_count = len(data['dependent_items'])
+            avg_complexity = data['complexity_score'] / max(item_count, 1)
+            upstream_count = len(data['upstream_dependencies'])
+            downstream_count = len(data['downstream_impacts'])
+            
+            # 종합 상호의존성 팩터 (0.0 ~ 1.0)
+            interdependency_factor = min(
+                (avg_complexity * 0.4) + 
+                (upstream_count / 10.0 * 0.3) + 
+                (downstream_count / 5.0 * 0.3), 
+                1.0
+            )
+            
+            data['interdependency_factor'] = interdependency_factor
+        
+        return interdependency_map
+    
+    def _calculate_time_based_pressures(self) -> Dict:
+        """시간 기반 압박도 계산"""
+        time_pressures = {}
+        
+        for building_name, pressure in self.production_pressures.items():
+            # 시간별 수요 변동 시뮬레이션
+            import time
+            current_hour = int(time.time() / 3600) % 24
+            
+            # 시간대별 압박 패턴 (현실적인 플레이 패턴 반영)
+            if 18 <= current_hour <= 23 or 7 <= current_hour <= 9:  # 피크 시간
+                time_multiplier = 1.3
+            elif 1 <= current_hour <= 6:  # 새벽 시간 (낮은 활동)
+                time_multiplier = 0.7  
+            else:  # 일반 시간
+                time_multiplier = 1.0
+            
+            # 생산 큐 시간 압박
+            queue_items = pressure.items_in_queue
+            total_queue_time = 0
+            
+            for item in queue_items:
+                item_time = self.hayday_items.get(item, {}).get('production_time', 300)
+                total_queue_time += item_time
+            
+            # 시간 압박도 계산
+            queue_time_pressure = min(total_queue_time / 7200.0, 1.0)  # 2시간 기준
+            
+            time_pressures[building_name] = {
+                'time_multiplier': time_multiplier,
+                'queue_time_pressure': queue_time_pressure,
+                'peak_hour_factor': 1.2 if 18 <= current_hour <= 22 else 1.0,
+                'combined_time_factor': min(time_multiplier * (1.0 + queue_time_pressure), 2.0)
+            }
+        
+        return time_pressures
+    
+    def _integrate_pressure_metrics(self, building_pressures: Dict, interdependency_map: Dict, time_pressures: Dict) -> Dict:
+        """압박도 메트릭 통합"""
+        integrated = {}
+        
+        for building_name in building_pressures.keys():
+            building_data = building_pressures.get(building_name, {})
+            interdep_data = interdependency_map.get(building_name, {})
+            time_data = time_pressures.get(building_name, {})
+            
+            # 기본 압박도
+            base_pressure = building_data.get('combined_pressure', 0.5)
+            
+            # 상호 의존성 팩터
+            interdependency_factor = interdep_data.get('interdependency_factor', 0.0)
+            
+            # 시간 팩터
+            time_factor = time_data.get('combined_time_factor', 1.0)
+            
+            # 최종 통합 압박도 계산
+            # 가중 평균 및 승수 적용
+            final_pressure = min(
+                (base_pressure * 0.5 +           # 50% 기본 압박도
+                 interdependency_factor * 0.3 +   # 30% 상호의존성
+                 (time_factor - 1.0) * 0.2        # 20% 시간 팩터
+                ), 1.0
+            )
+            
+            # 효율성 점수 계산
+            efficiency_score = max(0.0, 1.0 - final_pressure)
+            
+            integrated[building_name] = {
+                'base_pressure': base_pressure,
+                'interdependency_factor': interdependency_factor,
+                'time_factor': time_factor,
+                'final_pressure': max(0.0, final_pressure),
+                'efficiency_score': efficiency_score,
+                'bottlenecks': [],  # 병목 구간 (추후 계산)
+                'recommendations': []  # 개선 권장사항
+            }
+        
+        return integrated
+    
+    def _identify_production_bottlenecks(self, integrated_pressures: Dict) -> Dict:
+        """생산 병목 구간 식별"""
+        bottlenecks = {
+            'critical_bottlenecks': [],
+            'minor_bottlenecks': [],
+            'bottleneck_chains': [],
+            'resolution_priority': []
+        }
+        
+        # 높은 압박도를 가진 건물들 식별
+        for building, data in integrated_pressures.items():
+            pressure = data['final_pressure']
+            
+            if pressure > 0.85:
+                bottlenecks['critical_bottlenecks'].append({
+                    'building': building,
+                    'pressure': pressure,
+                    'impact': 'high',
+                    'urgency': 'immediate'
+                })
+            elif pressure > 0.65:
+                bottlenecks['minor_bottlenecks'].append({
+                    'building': building,
+                    'pressure': pressure,
+                    'impact': 'medium',
+                    'urgency': 'moderate'
+                })
+        
+        # 병목 체인 분석 (상호 의존적인 병목들)
+        critical_buildings = [b['building'] for b in bottlenecks['critical_bottlenecks']]
+        if len(critical_buildings) > 1:
+            bottlenecks['bottleneck_chains'].append({
+                'buildings': critical_buildings,
+                'chain_severity': 'high',
+                'compound_effect': len(critical_buildings) * 0.2
+            })
+        
+        # 해결 우선순위 설정
+        all_bottlenecks = bottlenecks['critical_bottlenecks'] + bottlenecks['minor_bottlenecks']
+        sorted_bottlenecks = sorted(all_bottlenecks, key=lambda x: x['pressure'], reverse=True)
+        
+        bottlenecks['resolution_priority'] = sorted_bottlenecks[:5]  # 상위 5개만
+        
+        return bottlenecks
+    
+    def _analyze_capacity_utilization(self, integrated_pressures: Dict) -> Dict:
+        """용량 활용도 분석"""
+        utilization = {
+            'average_utilization': 0.0,
+            'peak_utilization_buildings': [],
+            'underutilized_buildings': [],
+            'utilization_distribution': {},
+            'optimization_opportunities': []
+        }
+        
+        total_utilization = 0.0
+        building_count = 0
+        
+        for building, data in integrated_pressures.items():
+            pressure = data['final_pressure']
+            efficiency = data['efficiency_score']
+            
+            # 활용도 분석
+            if pressure > 0.9:
+                utilization['peak_utilization_buildings'].append(building)
+            elif pressure < 0.3:
+                utilization['underutilized_buildings'].append(building)
+            
+            utilization['utilization_distribution'][building] = {
+                'current_utilization': pressure,
+                'efficiency_rating': efficiency,
+                'status': 'overloaded' if pressure > 0.8 else 'balanced' if pressure > 0.4 else 'underutilized'
+            }
+            
+            total_utilization += pressure
+            building_count += 1
+        
+        utilization['average_utilization'] = total_utilization / max(building_count, 1)
+        
+        # 최적화 기회 식별
+        if len(utilization['peak_utilization_buildings']) > 0 and len(utilization['underutilized_buildings']) > 0:
+            utilization['optimization_opportunities'].append({
+                'type': 'load_balancing',
+                'description': '과부하 건물의 작업을 여유 건물로 분산',
+                'impact': 'medium'
+            })
+        
+        return utilization
+    
+    def _evaluate_production_efficiency(self, integrated_pressures: Dict) -> Dict:
+        """생산 효율성 평가"""
+        efficiency = {
+            'overall_efficiency': 0.0,
+            'efficient_buildings': [],
+            'inefficient_buildings': [],
+            'efficiency_metrics': {},
+            'improvement_suggestions': []
+        }
+        
+        total_efficiency = 0.0
+        building_count = 0
+        
+        for building, data in integrated_pressures.items():
+            efficiency_score = data['efficiency_score']
+            pressure = data['final_pressure']
+            
+            # 효율성 메트릭 계산
+            # 압박도와 효율성의 균형을 고려
+            balanced_efficiency = efficiency_score * (1.0 - abs(pressure - 0.6))  # 0.6을 최적 압박도로 간주
+            
+            if balanced_efficiency > 0.7:
+                efficiency['efficient_buildings'].append(building)
+            elif balanced_efficiency < 0.4:
+                efficiency['inefficient_buildings'].append(building)
+            
+            efficiency['efficiency_metrics'][building] = {
+                'raw_efficiency': efficiency_score,
+                'balanced_efficiency': balanced_efficiency,
+                'pressure_balance': abs(pressure - 0.6),  # 최적점 대비 편차
+                'optimization_potential': max(0.0, 0.8 - balanced_efficiency)
+            }
+            
+            total_efficiency += balanced_efficiency
+            building_count += 1
+        
+        efficiency['overall_efficiency'] = total_efficiency / max(building_count, 1)
+        
+        # 개선 제안
+        if efficiency['overall_efficiency'] < 0.6:
+            efficiency['improvement_suggestions'].append({
+                'priority': 'high',
+                'suggestion': '전반적인 생산 효율성 개선 필요',
+                'actions': ['압박도 분산', '병목 구간 해소', '자원 재분배']
+            })
+        
+        return efficiency
+    
     def _select_pattern_candidates(self, resource_analysis: Dict, production_pressure: Dict) -> List[str]:
-        """4단계: 납품 패턴 후보 선정"""
-        candidates = []
+        """7-8단계: 고도화된 납품 패턴 선정 시스템 (PDF Steps 7-8 구현)"""
         
-        # 리소스 상태에 따른 패턴 선정
-        deficit_ratio = resource_analysis['total_deficit_ratio']
-        overall_pressure = production_pressure['overall_pressure']
+        # 1. 다차원 분석 기반 패턴 후보 선정
+        candidates = self._analyze_multidimensional_pattern_suitability(resource_analysis, production_pressure)
         
-        if deficit_ratio < 0.2 and overall_pressure < 0.4:
-            # 여유로운 상황 - 쉬운 패턴 제외
-            candidates.extend(['normal_mixed', 'hard_production'])
-        elif deficit_ratio < 0.5 and overall_pressure < 0.7:
-            # 보통 상황 - 모든 패턴 가능
-            candidates.extend(['easy_crops', 'normal_mixed', 'hard_production'])
+        # 2. 시나리오 기반 패턴 필터링
+        scenario_candidates = self._apply_scenario_based_filtering(candidates, resource_analysis, production_pressure)
+        
+        # 3. 적응형 패턴 선택 (과거 성과 기반)
+        adaptive_candidates = self._apply_adaptive_pattern_selection(scenario_candidates)
+        
+        # 4. 상황별 전문화 패턴 추가
+        specialized_candidates = self._add_specialized_patterns(adaptive_candidates, resource_analysis, production_pressure)
+        
+        # 5. 최종 품질 검증 및 후보 반환
+        final_candidates = self._validate_pattern_quality(specialized_candidates, resource_analysis, production_pressure)
+        
+        return final_candidates
+    
+    def _analyze_multidimensional_pattern_suitability(self, resource_analysis: Dict, production_pressure: Dict) -> Dict[str, float]:
+        """다차원 분석 기반 패턴 적합성 평가"""
+        suitability_scores = {}
+        
+        # 기본 패턴들에 대한 다차원 평가
+        base_patterns = ['easy_crops', 'normal_mixed', 'hard_production', 'extreme_challenge']
+        
+        for pattern_id in base_patterns:
+            if pattern_id not in self.delivery_patterns:
+                continue
+                
+            pattern = self.delivery_patterns[pattern_id]
+            score = 0.0
+            
+            # 1. 자원 적합성 (40%)
+            resource_fitness = self._evaluate_resource_fitness(pattern, resource_analysis)
+            score += resource_fitness * 0.4
+            
+            # 2. 생산 압박 적합성 (30%)
+            pressure_fitness = self._evaluate_pressure_fitness(pattern, production_pressure)
+            score += pressure_fitness * 0.3
+            
+            # 3. 시간 효율성 (20%)
+            time_efficiency = self._evaluate_time_efficiency(pattern, resource_analysis)
+            score += time_efficiency * 0.2
+            
+            # 4. 전략적 다양성 (10%)
+            strategic_diversity = self._evaluate_strategic_diversity(pattern_id)
+            score += strategic_diversity * 0.1
+            
+            suitability_scores[pattern_id] = min(max(score, 0.0), 1.0)
+        
+        return suitability_scores
+    
+    def _apply_scenario_based_filtering(self, candidates: Dict[str, float], resource_analysis: Dict, production_pressure: Dict) -> Dict[str, float]:
+        """시나리오 기반 패턴 필터링"""
+        filtered_candidates = {}
+        
+        # 현재 상황 시나리오 분석
+        current_scenario = self._identify_current_scenario(resource_analysis, production_pressure)
+        
+        for pattern_id, score in candidates.items():
+            if score < 0.3:  # 최소 적합성 임계값
+                continue
+                
+            # 시나리오 적합성 평가
+            scenario_bonus = self._calculate_scenario_bonus(pattern_id, current_scenario)
+            adjusted_score = min(score + scenario_bonus, 1.0)
+            
+            # 시나리오별 필터링 규칙 적용
+            if self._passes_scenario_filter(pattern_id, current_scenario, adjusted_score):
+                filtered_candidates[pattern_id] = adjusted_score
+        
+        return filtered_candidates
+    
+    def _apply_adaptive_pattern_selection(self, candidates: Dict[str, float]) -> Dict[str, float]:
+        """적응형 패턴 선택 (과거 성과 기반)"""
+        adaptive_candidates = {}
+        
+        for pattern_id, score in candidates.items():
+            # 과거 성과 기반 가중치 조정
+            historical_performance = self._get_historical_performance(pattern_id)
+            performance_modifier = self._calculate_performance_modifier(historical_performance)
+            
+            # 학습 기반 적응 (최근 사용 패턴 고려)
+            usage_frequency = self._get_recent_usage_frequency(pattern_id)
+            diversity_bonus = self._calculate_diversity_bonus(usage_frequency)
+            
+            # 최종 적응 점수 계산
+            adaptive_score = score * performance_modifier + diversity_bonus
+            adaptive_candidates[pattern_id] = min(max(adaptive_score, 0.0), 1.0)
+        
+        return adaptive_candidates
+    
+    def _add_specialized_patterns(self, candidates: Dict[str, float], resource_analysis: Dict, production_pressure: Dict) -> Dict[str, float]:
+        """상황별 전문화 패턴 추가"""
+        specialized_candidates = candidates.copy()
+        
+        # 특별한 상황에서만 활성화되는 전문 패턴들
+        special_patterns = self._identify_special_situation_patterns(resource_analysis, production_pressure)
+        
+        for pattern_id, situation_score in special_patterns.items():
+            if pattern_id in self.delivery_patterns and situation_score > 0.6:
+                # 전문 패턴 추가 (기존 후보와 중복되지 않는 경우)
+                if pattern_id not in specialized_candidates:
+                    specialized_candidates[pattern_id] = situation_score
+                else:
+                    # 기존 점수와 전문 상황 점수의 가중 평균
+                    existing_score = specialized_candidates[pattern_id]
+                    combined_score = (existing_score * 0.7 + situation_score * 0.3)
+                    specialized_candidates[pattern_id] = combined_score
+        
+        return specialized_candidates
+    
+    def _validate_pattern_quality(self, candidates: Dict[str, float], resource_analysis: Dict, production_pressure: Dict) -> List[str]:
+        """최종 품질 검증 및 후보 반환"""
+        validated_patterns = []
+        
+        # 점수순으로 정렬
+        sorted_candidates = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
+        
+        for pattern_id, score in sorted_candidates:
+            # 최종 품질 검증
+            if self._validate_pattern_feasibility(pattern_id, resource_analysis, production_pressure):
+                validated_patterns.append(pattern_id)
+        
+        # 최소한 하나의 패턴은 보장
+        if not validated_patterns and sorted_candidates:
+            validated_patterns.append(sorted_candidates[0][0])
+        
+        # 다양성을 위해 최대 4개 패턴까지 반환
+        return validated_patterns[:4]
+    
+    # Helper methods for enhanced pattern selection
+    
+    def _evaluate_resource_fitness(self, pattern, resource_analysis: Dict) -> float:
+        """자원 적합성 평가"""
+        deficit_ratio = resource_analysis.get('total_deficit_ratio', 0.5)
+        abundant_count = len(resource_analysis.get('abundant_items', []))
+        
+        # 패턴별 자원 요구사항과 현재 상태 비교
+        if pattern.pattern_id == 'easy_crops':
+            return max(0.0, 1.0 - deficit_ratio * 2)  # 부족률이 낮을수록 적합
+        elif pattern.pattern_id == 'hard_production':
+            return min(1.0, abundant_count / 10.0)  # 풍부한 자원이 많을수록 적합
         else:
-            # 압박 상황 - 쉬운 패턴 선호
-            candidates.extend(['easy_crops', 'normal_mixed'])
+            return 0.7  # 기본 적합성
+    
+    def _evaluate_pressure_fitness(self, pattern, production_pressure: Dict) -> float:
+        """생산 압박 적합성 평가"""
+        overall_pressure = production_pressure.get('overall_pressure', 0.5)
+        high_pressure_count = len(production_pressure.get('high_pressure_buildings', []))
         
-        # 극한 도전은 특별한 조건에서만
-        if self.current_struggle_score < 30 and len(resource_analysis['abundant_items']) > 10:
-            candidates.append('extreme_challenge')
+        if pattern.pattern_id == 'easy_crops':
+            return max(0.0, 1.0 - overall_pressure)  # 압박이 낮을수록 적합
+        elif pattern.pattern_id == 'extreme_challenge':
+            return min(overall_pressure * 2, 1.0)  # 압박이 높을수록 적합 (역설적)
+        else:
+            return max(0.3, 1.0 - abs(overall_pressure - 0.5))  # 중간 압박이 적합
+    
+    def _evaluate_time_efficiency(self, pattern, resource_analysis: Dict) -> float:
+        """시간 효율성 평가"""
+        # 패턴의 예상 생산 시간과 현재 자원 상태 고려
+        if pattern.pattern_id == 'easy_crops':
+            return 0.8  # 빠른 생산
+        elif pattern.pattern_id == 'hard_production':
+            return 0.4  # 느린 생산
+        else:
+            return 0.6  # 중간 생산 속도
+    
+    def _evaluate_strategic_diversity(self, pattern_id: str) -> float:
+        """전략적 다양성 평가"""
+        # 최근 사용된 패턴과의 다양성 고려
+        recent_patterns = getattr(self, '_recent_patterns', [])
+        if pattern_id in recent_patterns[-3:]:  # 최근 3번 내 사용
+            return 0.2  # 다양성 부족
+        else:
+            return 0.8  # 좋은 다양성
+    
+    def _identify_current_scenario(self, resource_analysis: Dict, production_pressure: Dict) -> str:
+        """현재 상황 시나리오 식별"""
+        deficit_ratio = resource_analysis.get('total_deficit_ratio', 0.5)
+        overall_pressure = production_pressure.get('overall_pressure', 0.5)
         
-        return candidates
+        if deficit_ratio > 0.7 and overall_pressure > 0.7:
+            return 'crisis'
+        elif deficit_ratio < 0.3 and overall_pressure < 0.3:
+            return 'abundance'
+        elif overall_pressure > 0.6:
+            return 'high_pressure'
+        elif deficit_ratio > 0.6:
+            return 'resource_scarce'
+        else:
+            return 'balanced'
+    
+    def _calculate_scenario_bonus(self, pattern_id: str, scenario: str) -> float:
+        """시나리오별 보너스 계산"""
+        scenario_bonuses = {
+            'crisis': {'easy_crops': 0.3, 'normal_mixed': 0.1},
+            'abundance': {'hard_production': 0.3, 'extreme_challenge': 0.2},
+            'high_pressure': {'easy_crops': 0.2, 'normal_mixed': 0.1},
+            'resource_scarce': {'easy_crops': 0.2},
+            'balanced': {'normal_mixed': 0.1}
+        }
+        
+        return scenario_bonuses.get(scenario, {}).get(pattern_id, 0.0)
+    
+    def _passes_scenario_filter(self, pattern_id: str, scenario: str, score: float) -> bool:
+        """시나리오별 필터링 통과 여부"""
+        # 특정 시나리오에서 부적합한 패턴 필터링
+        if scenario == 'crisis' and pattern_id == 'extreme_challenge':
+            return False
+        if scenario == 'abundance' and pattern_id == 'easy_crops' and score < 0.6:
+            return False
+        return True
+    
+    def _get_historical_performance(self, pattern_id: str) -> float:
+        """패턴의 과거 성과 조회"""
+        # 실제 구현에서는 데이터베이스나 로그에서 조회
+        performance_data = getattr(self, '_pattern_performance', {})
+        return performance_data.get(pattern_id, 0.5)  # 기본값 0.5
+    
+    def _calculate_performance_modifier(self, performance: float) -> float:
+        """성과 기반 가중치 계산"""
+        # 성과가 좋을수록 가중치 증가
+        return 0.8 + (performance * 0.4)
+    
+    def _get_recent_usage_frequency(self, pattern_id: str) -> int:
+        """최근 사용 빈도 조회"""
+        recent_patterns = getattr(self, '_recent_patterns', [])
+        return recent_patterns[-10:].count(pattern_id)  # 최근 10개 내 사용 횟수
+    
+    def _calculate_diversity_bonus(self, usage_frequency: int) -> float:
+        """다양성 보너스 계산"""
+        # 사용 빈도가 낮을수록 보너스
+        return max(0.0, 0.2 - (usage_frequency * 0.05))
+    
+    def _identify_special_situation_patterns(self, resource_analysis: Dict, production_pressure: Dict) -> Dict[str, float]:
+        """특별한 상황의 전문 패턴 식별"""
+        special_patterns = {}
+        
+        # Township 기차 특화 패턴 (예시)
+        if hasattr(self, 'township_mode') and self.township_mode:
+            special_patterns['township_train'] = 0.8
+        
+        # 긴급 복구 패턴
+        if resource_analysis.get('total_deficit_ratio', 0) > 0.8:
+            special_patterns['emergency_recovery'] = 0.7
+        
+        return special_patterns
+    
+    def _validate_pattern_feasibility(self, pattern_id: str, resource_analysis: Dict, production_pressure: Dict) -> bool:
+        """패턴 실행 가능성 검증"""
+        if pattern_id not in self.delivery_patterns:
+            return False
+        
+        pattern = self.delivery_patterns[pattern_id]
+        
+        # 기본 실행 가능성 체크
+        if resource_analysis.get('total_deficit_ratio', 0) > 0.9 and pattern_id == 'extreme_challenge':
+            return False  # 극도로 부족한 상황에서는 극한 도전 불가
+        
+        return True
     
     def _apply_pattern_weights(self, pattern_candidates: List[str], use_struggle_adjustment: bool) -> Dict[str, float]:
         """5단계: 가중치 적용 (스트러글 스코어 반영)"""
@@ -1444,7 +2206,7 @@ class SungDaeSimulator:
                     
                     hayday_items[name] = {
                         'sell_price': int(row.get('Value', 100)),
-                        'production_time': int(row.get('Time', 300)),
+                        'production_time': int(row.get('Time', 5)) * 60,  # 분을 초로 변환 (5분 기본값)
                         'buildings': [row.get('Building', 'farm')],
                         'unlock_level': correct_unlock_level  # 수정된 레벨 사용
                     }
@@ -1456,15 +2218,15 @@ class SungDaeSimulator:
             
             # 실제 헤이데이 아이템들 (전체 데이터)
             real_hayday_items = {
-                # 기본 작물들 (CROPS 레이어)
-                'Wheat': {'sell_price': 1, 'production_time': 120, 'buildings': ['field'], 'unlock_level': 1},
-                'Corn': {'sell_price': 2, 'production_time': 300, 'buildings': ['field'], 'unlock_level': 1}, 
-                'Carrot': {'sell_price': 3, 'production_time': 600, 'buildings': ['field'], 'unlock_level': 8},
-                'Soybean': {'sell_price': 4, 'production_time': 1200, 'buildings': ['field'], 'unlock_level': 15},
-                'Sugarcane': {'sell_price': 2, 'production_time': 240, 'buildings': ['field'], 'unlock_level': 5},
-                'Cotton': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 7},
-                'Tomato': {'sell_price': 5, 'production_time': 1440, 'buildings': ['field'], 'unlock_level': 20},
-                'Potato': {'sell_price': 4, 'production_time': 720, 'buildings': ['field'], 'unlock_level': 18},
+                # 기본 작물들 (CROPS 레이어) - 분을 초로 변환
+                'Wheat': {'sell_price': 1, 'production_time': 120, 'buildings': ['field'], 'unlock_level': 1},  # 2분
+                'Corn': {'sell_price': 2, 'production_time': 300, 'buildings': ['field'], 'unlock_level': 2},   # 5분  
+                'Carrot': {'sell_price': 3, 'production_time': 600, 'buildings': ['field'], 'unlock_level': 9}, # 10분
+                'Soybean': {'sell_price': 4, 'production_time': 1200, 'buildings': ['field'], 'unlock_level': 5}, # 20분
+                'Sugarcane': {'sell_price': 2, 'production_time': 1800, 'buildings': ['field'], 'unlock_level': 7}, # 30분
+                'Cotton': {'sell_price': 3, 'production_time': 9000, 'buildings': ['field'], 'unlock_level': 18}, # 150분
+                'Tomato': {'sell_price': 5, 'production_time': 21600, 'buildings': ['field'], 'unlock_level': 30}, # 360분
+                'Potato': {'sell_price': 4, 'production_time': 13200, 'buildings': ['field'], 'unlock_level': 35}, # 220분
                 'Cocoa': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 13},
                 'Coffee Bean': {'sell_price': 4, 'production_time': 960, 'buildings': ['field'], 'unlock_level': 23},
                 'Indigo': {'sell_price': 5, 'production_time': 1800, 'buildings': ['field'], 'unlock_level': 25},
@@ -1495,7 +2257,20 @@ class SungDaeSimulator:
                 'Cow Feed': {'sell_price': 72, 'production_time': 2400, 'buildings': ['feed_mill'], 'unlock_level': 11},
                 'Pig Feed': {'sell_price': 108, 'production_time': 3600, 'buildings': ['feed_mill'], 'unlock_level': 14},
                 'Sheep Feed': {'sell_price': 144, 'production_time': 4800, 'buildings': ['feed_mill'], 'unlock_level': 16},
-                'Goat Feed': {'sell_price': 216, 'production_time': 7200, 'buildings': ['feed_mill'], 'unlock_level': 38}
+                'Goat Feed': {'sell_price': 216, 'production_time': 7200, 'buildings': ['feed_mill'], 'unlock_level': 38},
+                
+                # 과일 (CROPS 레이어) - 나무에서 생산, CSV 데이터 기반으로 분을 초로 변환
+                'Apple': {'sell_price': 22, 'production_time': 57600, 'buildings': ['AppleTree'], 'unlock_level': 15},      # 960분 = 16시간
+                'Cherry': {'sell_price': 40, 'production_time': 100800, 'buildings': ['CherryTree'], 'unlock_level': 22},   # 1680분 = 28시간
+                'Raspberry': {'sell_price': 26, 'production_time': 64800, 'buildings': ['RaspberryBush'], 'unlock_level': 19},  # 1080분 = 18시간
+                'Blackberry': {'sell_price': 47, 'production_time': 115200, 'buildings': ['BlackberryBush'], 'unlock_level': 26}, # 1920분 = 32시간
+                'Cacao': {'sell_price': 49, 'production_time': 126000, 'buildings': ['CacaoTree'], 'unlock_level': 36},     # 2100분 = 35시간
+                'Coffee': {'sell_price': 37, 'production_time': 90000, 'buildings': ['CoffeeBush'], 'unlock_level': 42},   # 1500분 = 25시간
+                'Olive': {'sell_price': 50, 'production_time': 86400, 'buildings': ['OliveTree'], 'unlock_level': 57},     # 1440분 = 24시간
+                'Lemon': {'sell_price': 55, 'production_time': 108000, 'buildings': ['LemonTree'], 'unlock_level': 66},    # 1800분 = 30시간
+                'Orange': {'sell_price': 58, 'production_time': 111600, 'buildings': ['OrangeTree'], 'unlock_level': 71},   # 1860분 = 31시간
+                'Peach': {'sell_price': 59, 'production_time': 108000, 'buildings': ['PeachTree'], 'unlock_level': 76},    # 1800분 = 30시간
+                'Banana': {'sell_price': 61, 'production_time': 100800, 'buildings': ['BananaTree'], 'unlock_level': 88},   # 1680분 = 28시간
             }
             hayday_items.update(real_hayday_items)
         
