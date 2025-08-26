@@ -13,6 +13,110 @@
     </div>
 </div>
 
+<!-- 실시간 다이나믹 밸런싱 시스템 (최상단) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-brain me-2"></i>실시간 다이나믹 밸런싱 시스템
+                    <span class="badge bg-success ms-2" id="balancing-status">활성</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- 소스 태깅 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-tags me-1"></i>소스 태깅 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="source-tagging-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 생산 압박 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark py-2">
+                                <h6 class="mb-0"><i class="fas fa-pressure-alt me-1"></i>생산 압박 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="production-pressure-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 패턴 선정 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-chess me-1"></i>패턴 선정 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="pattern-selection-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 실시간 밸런싱 상태 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white py-2">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-chart-line me-1"></i>실시간 밸런싱 상태
+                                    <small class="ms-2">마지막 업데이트: <span id="last-update-time">--</span></small>
+                                </h6>
+                            </div>
+                            <div class="card-body p-3" id="real-time-balance">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-primary mb-1" id="struggle-score">--</div>
+                                            <small class="text-muted">스트러글 스코어</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-warning mb-1" id="deficit-ratio">--</div>
+                                            <small class="text-muted">부족 비율</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-success mb-1" id="pressure-level">--</div>
+                                            <small class="text-muted">압박 레벨</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-info mb-1" id="balance-trend">--</div>
+                                            <small class="text-muted">밸런스 동향</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <!-- 시뮬레이터 컨트롤 -->
     <div class="col-lg-6 mb-4">
@@ -204,105 +308,6 @@
     </div>
 </div>
 
-<!-- 다이나믹 밸런싱 시각화 -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-brain me-2"></i>다이나믹 밸런싱 시스템
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <!-- 소스 태깅 분석 -->
-                    <div class="col-md-4">
-                        <div class="card border-primary">
-                            <div class="card-header bg-primary text-white py-2">
-                                <h6 class="mb-0"><i class="fas fa-tags me-1"></i>소스 태깅 분석</h6>
-                            </div>
-                            <div class="card-body p-3" id="source-tagging-info">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <small>분석 중...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 생산 압박 분석 -->
-                    <div class="col-md-4">
-                        <div class="card border-warning">
-                            <div class="card-header bg-warning text-dark py-2">
-                                <h6 class="mb-0"><i class="fas fa-pressure-alt me-1"></i>생산 압박 분석</h6>
-                            </div>
-                            <div class="card-body p-3" id="production-pressure-info">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <small>분석 중...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 패턴 선정 분석 -->
-                    <div class="col-md-4">
-                        <div class="card border-success">
-                            <div class="card-header bg-success text-white py-2">
-                                <h6 class="mb-0"><i class="fas fa-chess me-1"></i>패턴 선정 분석</h6>
-                            </div>
-                            <div class="card-body p-3" id="pattern-selection-info">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <small>분석 중...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 실시간 밸런싱 상태 -->
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white py-2">
-                                <h6 class="mb-0"><i class="fas fa-chart-line me-1"></i>실시간 밸런싱 상태</h6>
-                            </div>
-                            <div class="card-body p-3" id="real-time-balance">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <div class="h4 text-primary mb-1" id="struggle-score">--</div>
-                                            <small class="text-muted">스트러글 스코어</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <div class="h4 text-warning mb-1" id="deficit-ratio">--</div>
-                                            <small class="text-muted">부족 비율</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <div class="h4 text-success mb-1" id="pressure-level">--</div>
-                                            <small class="text-muted">압박 레벨</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <div class="h4 text-info mb-1" id="balance-trend">--</div>
-                                            <small class="text-muted">밸런스 동향</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- 고급 컨트롤 -->
 <div class="row mt-4">
@@ -403,6 +408,8 @@ function generateSungdaeOrder() {
         if (data.success) {
             addOrderToDisplay(data.order);
             updateSystemStatus(data.system_status);
+            // 주문 생성 후 밸런싱 업데이트
+            triggerBalancingUpdate();
         } else {
             alert('주문 생성 실패: ' + data.error);
         }
@@ -439,6 +446,8 @@ function generateBatchOrders() {
             // 배치 주문을 역순으로 추가해서 최신이 위에 오도록 함
             data.orders.reverse().forEach(order => addOrderToDisplay(order));
             updateSystemStatus(data.system_status);
+            // 배치 주문 생성 후 밸런싱 업데이트
+            triggerBalancingUpdate();
         } else {
             alert('배치 생성 실패: ' + data.error);
         }
@@ -781,6 +790,9 @@ function updatePatternSelectionInfo(patternData) {
 
 // 실시간 밸런싱 상태 정보 업데이트  
 function updateRealTimeBalanceInfo(data) {
+    // 마지막 업데이트 시간 표시
+    document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString('ko-KR');
+    
     // 스트러글 스코어
     const struggleScore = data.current_struggle_score || 0;
     document.getElementById('struggle-score').textContent = struggleScore.toFixed(1);
@@ -802,6 +814,19 @@ function updateRealTimeBalanceInfo(data) {
         'insufficient_data': '분석중'
     }[trend] || '분석중';
     document.getElementById('balance-trend').textContent = trendText;
+    
+    // 밸런싱 상태 배지 업데이트
+    const balancingStatus = document.getElementById('balancing-status');
+    if (struggleScore > 80 || pressureLevel > 0.8) {
+        balancingStatus.className = 'badge bg-danger ms-2';
+        balancingStatus.textContent = '고위험';
+    } else if (struggleScore > 60 || pressureLevel > 0.6) {
+        balancingStatus.className = 'badge bg-warning ms-2';
+        balancingStatus.textContent = '주의';
+    } else {
+        balancingStatus.className = 'badge bg-success ms-2';
+        balancingStatus.textContent = '정상';
+    }
 }
 
 // 스트러글 스코어 조정
@@ -1114,8 +1139,10 @@ function applyInventoryChanges() {
             showToast(data.message, 'success');
             // 모달 닫기
             bootstrap.Modal.getInstance(document.getElementById('inventoryEditModal')).hide();
-            // 인벤토리 새로고침
+            // 인벤토리 새로고림
             refreshInventory();
+            // 실시간 밸런싱 업데이트 트리거
+            triggerBalancingUpdate();
         } else {
             showToast('인벤토리 업데이트 실패: ' + data.error, 'error');
         }
@@ -1162,6 +1189,200 @@ function updateBarnCapacityDisplay(barnCapacity) {
     document.getElementById('barn-capacity-info').innerHTML = 
         `Barn: <span class="${totalUsed > barnCapacity * 0.9 ? 'text-warning' : 'text-light'}">${totalUsed}</span>/${barnCapacity}`;
 }
+
+// 🦎 진짜 도마뱀 애니메이션 시스템 (성대모드용)
+function createLizard() {
+    const lizard = document.createElement('div');
+    lizard.className = 'crawling-lizard';
+    lizard.innerHTML = '🦎';
+    lizard.style.cssText = `
+        position: fixed;
+        font-size: 60px;
+        z-index: 9999;
+        pointer-events: all;
+        cursor: pointer;
+        opacity: 0.9;
+        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        user-select: none;
+    `;
+    
+    // 랜덤 시작 위치
+    let currentX = Math.random() * (window.innerWidth - 60);
+    let currentY = Math.random() * (window.innerHeight - 60);
+    lizard.style.left = currentX + 'px';
+    lizard.style.top = currentY + 'px';
+    
+    document.body.appendChild(lizard);
+    
+    let isExploded = false;
+    let moveTimeout;
+    
+    // 폭발 효과
+    function explodeLizard(event) {
+        if (isExploded) return;
+        isExploded = true;
+        clearTimeout(moveTimeout);
+        
+        const rect = lizard.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        // 폭발 파티클 생성
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+                position: fixed;
+                width: 6px;
+                height: 6px;
+                background: ${['#ff6b35', '#f7931e', '#ffdc00', '#c5d86d', '#00a8cc'][Math.floor(Math.random() * 5)]};
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 10000;
+                left: ${centerX}px;
+                top: ${centerY}px;
+            `;
+            
+            document.body.appendChild(particle);
+            
+            // 파티클 폭발 애니메이션
+            const angle = (Math.PI * 2 * i) / 20;
+            const velocity = 50 + Math.random() * 100;
+            const deltaX = Math.cos(angle) * velocity;
+            const deltaY = Math.sin(angle) * velocity;
+            
+            particle.animate([
+                { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0)`, opacity: 0 }
+            ], {
+                duration: 800 + Math.random() * 400,
+                easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                fill: 'forwards'
+            }).addEventListener('finish', () => particle.remove());
+        }
+        
+        // 도마뱀 폭발 애니메이션
+        lizard.animate([
+            { transform: 'scale(1) rotate(0deg)', opacity: 1 },
+            { transform: 'scale(2) rotate(180deg)', opacity: 0 }
+        ], {
+            duration: 300,
+            easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+            fill: 'forwards'
+        }).addEventListener('finish', () => {
+            lizard.style.display = 'none';
+            
+            // 10초 후 부활
+            setTimeout(() => {
+                if (lizard.parentNode) {
+                    lizard.style.display = 'block';
+                    lizard.style.transform = 'scale(1) rotate(0deg)';
+                    lizard.style.opacity = '0.9';
+                    isExploded = false;
+                    crawlLizard();
+                }
+            }, 10000);
+        });
+    }
+    
+    // 진짜 도마뱀처럼 기어다니기
+    function crawlLizard() {
+        if (isExploded) return;
+        
+        const targetX = Math.random() * (window.innerWidth - 60);
+        const targetY = Math.random() * (window.innerHeight - 60);
+        
+        const deltaX = targetX - currentX;
+        const deltaY = targetY - currentY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance < 50) {
+            setTimeout(crawlLizard, 2000 + Math.random() * 3000);
+            return;
+        }
+        
+        // 진짜 도마뱀처럼 구불구불 기어다니는 애니메이션
+        lizard.animate([
+            { transform: 'translate(0, 0) rotate(0deg) scaleX(1)' },
+            { transform: `translate(${deltaX * 0.3}px, ${deltaY * 0.3}px) rotate(${Math.random() * 20 - 10}deg) scaleX(0.9)` },
+            { transform: `translate(${deltaX * 0.7}px, ${deltaY * 0.7}px) rotate(${Math.random() * 20 - 10}deg) scaleX(1.1)` },
+            { transform: `translate(${deltaX}px, ${deltaY}px) rotate(${Math.atan2(deltaY, deltaX) * 180 / Math.PI}deg) scaleX(1)` }
+        ], {
+            duration: Math.min(5000, Math.max(2000, distance * 10)),
+            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            fill: 'forwards'
+        }).addEventListener('finish', () => {
+            currentX = targetX;
+            currentY = targetY;
+            
+            // 잠시 멈춤 (실제 도마뱀처럼)
+            moveTimeout = setTimeout(crawlLizard, 1000 + Math.random() * 4000);
+        });
+    }
+    
+    lizard.addEventListener('click', explodeLizard);
+    
+    // 첫 번째 이동 시작
+    setTimeout(crawlLizard, 2000);
+    
+    // 5분 후 자동 제거
+    setTimeout(() => {
+        if (lizard.parentNode) {
+            lizard.remove();
+        }
+    }, 300000);
+}
+
+// 실시간 다이나믹 밸런싱 자동 업데이트
+let balancingUpdateInterval;
+
+function startRealTimeBalancing() {
+    // 초기 로딩
+    refreshSystemStatus();
+    
+    // 5초마다 자동 업데이트
+    balancingUpdateInterval = setInterval(() => {
+        refreshSystemStatus();
+    }, 5000);
+    
+    console.log('[BALANCING] 실시간 다이나믹 밸런싱 활성화 (5초 간격)');
+}
+
+function stopRealTimeBalancing() {
+    if (balancingUpdateInterval) {
+        clearInterval(balancingUpdateInterval);
+        balancingUpdateInterval = null;
+        console.log('[BALANCING] 실시간 밸런싱 비활성화');
+    }
+}
+
+// 인벤토리 변경시 즉시 밸런싱 업데이트 트리거
+function triggerBalancingUpdate() {
+    refreshSystemStatus();
+    console.log('[BALANCING] 인벤토리 변경으로 인한 밸런싱 업데이트');
+}
+
+// 페이지 로드시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    // 실시간 밸런싱 시작
+    startRealTimeBalancing();
+    
+    // 10초 후 첫 도마뱀
+    setTimeout(createLizard, 10000);
+    
+    // 1분마다 새 도마뱀 (최대 3마리)
+    let lizardCount = 0;
+    setInterval(() => {
+        const existingLizards = document.querySelectorAll('.crawling-lizard');
+        if (existingLizards.length < 3) {
+            createLizard();
+        }
+    }, 60000);
+});
+
+// 페이지 언로드시 정리
+window.addEventListener('beforeunload', function() {
+    stopRealTimeBalancing();
+});
 </script>
 
 <!-- 인벤토리 편집 모달 -->
