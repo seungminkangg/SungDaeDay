@@ -126,6 +126,12 @@ class SungDaeSimulator:
         self._initialize_delivery_patterns()
         self._initialize_resource_states()
         self._initialize_production_systems()
+        
+        print(f"[INIT] SungDae 시뮬레이터 초기화 완료:")
+        print(f"  - 플레이어 레벨: {self.player_level}")
+        print(f"  - 전체 아이템 DB: {len(self.hayday_items)}")
+        print(f"  - 사용 가능한 아이템: {len(self.resource_states)}")
+        print(f"  - 레벨 {self.player_level} 이하 아이템들: {list(self.resource_states.keys())[:10]}...")
     
     def _initialize_delivery_patterns(self):
         """납품 패턴 초기화 (PDF: 패턴 가중치 적용)"""
@@ -181,6 +187,7 @@ class SungDaeSimulator:
             # 플레이어 레벨보다 높은 언락 레벨의 아이템은 건너뛰기
             unlock_level = item_data.get('unlock_level', 1)
             if unlock_level > self.player_level:
+                print(f"[DEBUG] 레벨 {unlock_level} 아이템 '{item_name}' 제외됨 (플레이어 레벨: {self.player_level})")
                 continue
                 
             layer = layer_classification.get(item_name, ItemLayer.CROPS)
@@ -819,19 +826,6 @@ class SungDaeSimulator:
         if item_name.lower().strip() in [invalid.lower() for invalid in invalid_items]:
             return False
             
-        # 레벨 5에서 사용하기 부적절한 고레벨 Tree 아이템들 제외
-        # (hayday_extracted_data에서 오는 잘못된 데이터 필터링)
-        problematic_trees = {
-            'AppleTree', 'CherryTree', 'RaspberryBush', 'BlackberryBush', 'CacaoTree',
-            'OliveTree', 'LemonTree', 'PeachTree', 'OrangeTree', 'BananaTree',
-            'PlumTree', 'MangoTree', 'CoconutTree', 'GuavaTree', 'PomegranateTree',
-            'BlueberryBush', 'CoffeeBush', 'Apple', 'Cherry', 'Raspberry', 'Blackberry', 
-            'Cacao', 'Olive', 'Lemon', 'Peach', 'Orange', 'Banana', 'Plum', 'Mango',
-            'Coconut', 'Guava', 'Pomegranate', 'Blueberry', 'Coffee'
-        }
-        
-        if item_name in problematic_trees:
-            return False
         
         # 아이템명이 너무 짧거나 특수문자로만 구성된 경우
         if len(item_name.strip()) < 2:
@@ -1298,11 +1292,14 @@ class SungDaeSimulator:
             for _, row in hayday_simulator.orders.iterrows():
                 name = row.get('Name', '')
                 if name and isinstance(name, str) and name.strip():
+                    # 아이템별 올바른 언락 레벨 설정 (HayDay 실제 레벨)
+                    correct_unlock_level = cls._get_correct_unlock_level(name)
+                    
                     hayday_items[name] = {
                         'sell_price': int(row.get('Value', 100)),
                         'production_time': int(row.get('Time', 300)),
                         'buildings': [row.get('Building', 'farm')],
-                        'unlock_level': int(row.get('UnlockLevel', 1))
+                        'unlock_level': correct_unlock_level  # 수정된 레벨 사용
                     }
         
         # 실제 헤이데이 아이템들로 교체 (orders 데이터가 올바르지 않은 경우)
@@ -1356,6 +1353,63 @@ class SungDaeSimulator:
             hayday_items.update(real_hayday_items)
         
         return cls(hayday_items, player_level)
+    
+    @classmethod
+    def _get_correct_unlock_level(cls, item_name: str) -> int:
+        """아이템별 올바른 HayDay 언락 레벨 반환 (다이나믹 레벨 설정)"""
+        # 기본 작물 (레벨 1-10)
+        basic_crops = {
+            'Wheat': 1, 'Corn': 1, 'Sugarcane': 5, 'Carrot': 8, 'Cotton': 7
+        }
+        
+        # 동물 제품 (레벨 6-20)
+        animal_products = {
+            'Egg': 6, 'Milk': 11, 'Wool': 9, 'Bacon': 14
+        }
+        
+        # 기본 가공품 (레벨 3-15)
+        basic_processed = {
+            'Bread': 3, 'Cookie': 8, 'Butter': 13, 'Chicken Feed': 6, 'Cow Feed': 11
+        }
+        
+        # 과일 나무들 (레벨 15-35) - 실제 HayDay 진행 순서
+        fruit_trees = {
+            'Apple': 15, 'AppleTree': 15, 'Cherry': 19, 'CherryTree': 19,
+            'Peach': 28, 'PeachTree': 28, 'Lemon': 23, 'LemonTree': 23,
+            'Olive': 35, 'OliveTree': 35, 'Orange': 26, 'OrangeTree': 26,
+            'Banana': 33, 'BananaTree': 33, 'Plum': 31, 'PlumTree': 31,
+            'Mango': 40, 'MangoTree': 40, 'Coconut': 42, 'CoconutTree': 42,
+            'Guava': 44, 'GuavaTree': 44, 'Pomegranate': 46, 'PomegranateTree': 46
+        }
+        
+        # 베리 부쉬들 (레벨 20-30)
+        berry_bushes = {
+            'Blackberry': 20, 'BlackberryBush': 20, 'Raspberry': 25, 'RaspberryBush': 25,
+            'Blueberry': 30, 'BlueberryBush': 30
+        }
+        
+        # 특수 작물 (레벨 13-35)
+        special_crops = {
+            'Cocoa': 13, 'CacaoTree': 13, 'Coffee': 23, 'CoffeeBush': 23,
+            'Tomato': 20, 'Potato': 18, 'Indigo': 25, 'Pumpkin': 30, 'Chili Pepper': 35
+        }
+        
+        # 아이템별 레벨 확인
+        if item_name in basic_crops:
+            return basic_crops[item_name]
+        elif item_name in animal_products:
+            return animal_products[item_name]
+        elif item_name in basic_processed:
+            return basic_processed[item_name]
+        elif item_name in fruit_trees:
+            return fruit_trees[item_name]
+        elif item_name in berry_bushes:
+            return berry_bushes[item_name]
+        elif item_name in special_crops:
+            return special_crops[item_name]
+        else:
+            # 알 수 없는 아이템은 높은 레벨로 설정 (기본적으로 필터링됨)
+            return 50
     
     # Helper methods for UI display data
     def _get_struggle_trend(self) -> str:
