@@ -296,8 +296,8 @@ class SungDaeSimulator:
             if not self._is_valid_item(item_name):
                 continue
             
-            # 플레이어 레벨보다 높은 언락 레벨의 아이템은 건너뛰기
-            unlock_level = item_data.get('unlock_level', 1)
+            # 플레이어 레벨보다 높은 언락 레벨의 아이템은 건너뛰기 (CSV 데이터 기반)
+            unlock_level = self._get_correct_unlock_level(item_name)
             if unlock_level > self.player_level:
                 print(f"[DEBUG] 레벨 {unlock_level} 아이템 '{item_name}' 제외됨 (플레이어 레벨: {self.player_level})")
                 continue
@@ -486,7 +486,7 @@ class SungDaeSimulator:
         selected_pattern = self._select_final_pattern(weighted_patterns)
         
         # 기차 전용 아이템 선정 (TOP 레이어 선호, 더 많은 수량)
-        selected_items = self._select_train_items_and_quantities(selected_pattern, source_tags)
+        selected_items, train_cars = self._select_train_items_and_quantities(selected_pattern, source_tags)
         
         # 기차 전용 희소성 알고리즘 (더 공격적)
         scarcity_adjusted_items = self._apply_train_scarcity_algorithm(selected_items)
@@ -495,7 +495,7 @@ class SungDaeSimulator:
         struggle_score = self._calculate_train_struggle_score(scarcity_adjusted_items, selected_pattern)
         
         # 기차 전용 최종 주문 생성
-        order = self._create_final_order(scarcity_adjusted_items, struggle_score, selected_pattern, DeliveryType.TRAIN)
+        order = self._create_final_order(scarcity_adjusted_items, struggle_score, selected_pattern, DeliveryType.TRAIN, train_cars)
         
         # 히스토리 업데이트
         self.delivery_history.append(order)
@@ -565,7 +565,7 @@ class SungDaeSimulator:
         else:
             return base_modifier * 1.2
     
-    def _select_train_items_and_quantities(self, pattern: DeliveryPattern, source_tags: Dict) -> Dict[str, int]:
+    def _select_train_items_and_quantities(self, pattern: DeliveryPattern, source_tags: Dict) -> tuple[Dict[str, int], int]:
         """기차 전용 아이템 선정 (Township 규칙: 3-5칸 구성, 알고리즘 기반 수량)"""
         selected_items = {}
         
@@ -617,7 +617,7 @@ class SungDaeSimulator:
                 car_quantity = self._calculate_township_train_quantity(layer, train_cars)
                 selected_items[item] = car_quantity
         
-        return selected_items
+        return selected_items, train_cars
     
     def _calculate_township_train_quantity(self, layer: ItemLayer, train_cars: int) -> int:
         """Township 기차 수량 알고리즘 (플레이어 레벨 기반, 칸별 분산)"""
@@ -1884,7 +1884,7 @@ class SungDaeSimulator:
         return layer_multiplier
     
     def _create_final_order(self, items: Dict[str, int], struggle_score: float, 
-                          pattern: DeliveryPattern, delivery_type: DeliveryType) -> DeliveryOrder:
+                          pattern: DeliveryPattern, delivery_type: DeliveryType, train_cars: int = 3) -> DeliveryOrder:
         """10단계: 최종 주문 생성"""
         
         # 난이도 등급 결정 (기차는 더 높은 기준)
@@ -1970,7 +1970,7 @@ class SungDaeSimulator:
                     for layer in ItemLayer
                 },
                 # Township 기차 전용 메타데이터
-                'township_train_cars': getattr(pattern, 'train_cars', 3) if delivery_type == DeliveryType.TRAIN else None,
+                'township_train_cars': train_cars if delivery_type == DeliveryType.TRAIN else None,
                 'car_distribution': self._get_car_distribution_info(items) if delivery_type == DeliveryType.TRAIN else None,
                 'township_algorithm_version': '2.1' if delivery_type == DeliveryType.TRAIN else '1.0',
                 # PDF 분석 기반 추가 메타데이터
@@ -2218,12 +2218,12 @@ class SungDaeSimulator:
             
             # 실제 헤이데이 아이템들 (전체 데이터)
             real_hayday_items = {
-                # 기본 작물들 (CROPS 레이어) - 분을 초로 변환
+                # 기본 작물들 (CROPS 레이어) - 분을 초로 변환, 레벨 5에 더 많은 아이템 제공
                 'Wheat': {'sell_price': 1, 'production_time': 120, 'buildings': ['field'], 'unlock_level': 1},  # 2분
                 'Corn': {'sell_price': 2, 'production_time': 300, 'buildings': ['field'], 'unlock_level': 2},   # 5분  
-                'Carrot': {'sell_price': 3, 'production_time': 600, 'buildings': ['field'], 'unlock_level': 9}, # 10분
+                'Carrot': {'sell_price': 3, 'production_time': 600, 'buildings': ['field'], 'unlock_level': 4}, # 10분 (레벨 4로 조정)
                 'Soybean': {'sell_price': 4, 'production_time': 1200, 'buildings': ['field'], 'unlock_level': 5}, # 20분
-                'Sugarcane': {'sell_price': 2, 'production_time': 1800, 'buildings': ['field'], 'unlock_level': 7}, # 30분
+                'Sugarcane': {'sell_price': 2, 'production_time': 1800, 'buildings': ['field'], 'unlock_level': 5}, # 30분 (레벨 5로 조정)
                 'Cotton': {'sell_price': 3, 'production_time': 9000, 'buildings': ['field'], 'unlock_level': 18}, # 150분
                 'Tomato': {'sell_price': 5, 'production_time': 21600, 'buildings': ['field'], 'unlock_level': 30}, # 360분
                 'Potato': {'sell_price': 4, 'production_time': 13200, 'buildings': ['field'], 'unlock_level': 35}, # 220분
@@ -2233,14 +2233,15 @@ class SungDaeSimulator:
                 'Pumpkin': {'sell_price': 6, 'production_time': 2160, 'buildings': ['field'], 'unlock_level': 30},
                 'Chili Pepper': {'sell_price': 7, 'production_time': 2400, 'buildings': ['field'], 'unlock_level': 35},
                 
-                # 동물 제품들 (MID 레이어)
-                'Egg': {'sell_price': 12, 'production_time': 1200, 'buildings': ['chicken_coop'], 'unlock_level': 6},
+                # 동물 제품들 (MID 레이어) - 레벨 5에서 접근 가능하도록 조정
+                'Egg': {'sell_price': 12, 'production_time': 1200, 'buildings': ['chicken_coop'], 'unlock_level': 4}, # 레벨 4로 조정
                 'Milk': {'sell_price': 25, 'production_time': 3600, 'buildings': ['cow_pasture'], 'unlock_level': 11},
                 'Bacon': {'sell_price': 73, 'production_time': 2400, 'buildings': ['pig_pen'], 'unlock_level': 14},
                 'Wool': {'sell_price': 52, 'production_time': 14400, 'buildings': ['sheep_pasture'], 'unlock_level': 9},
                 
-                # 베이커리 제품들 (MID 레이어)
+                # 베이커리 제품들 (MID 레이어) - 레벨 5에서 더 많이 접근 가능
                 'Bread': {'sell_price': 27, 'production_time': 300, 'buildings': ['bakery'], 'unlock_level': 3},
+                'Cookie': {'sell_price': 67, 'production_time': 1800, 'buildings': ['bakery'], 'unlock_level': 5}, # 레벨 5로 조정
                 'Cookie': {'sell_price': 67, 'production_time': 1800, 'buildings': ['bakery'], 'unlock_level': 8},
                 'Brown Sugar': {'sell_price': 50, 'production_time': 900, 'buildings': ['sugar_mill'], 'unlock_level': 19},
                 'White Sugar': {'sell_price': 72, 'production_time': 1200, 'buildings': ['sugar_mill'], 'unlock_level': 26},
@@ -2278,57 +2279,69 @@ class SungDaeSimulator:
     
     @classmethod
     def _get_correct_unlock_level(cls, item_name: str) -> int:
-        """아이템별 올바른 HayDay 언락 레벨 반환 (다이나믹 레벨 설정)"""
-        # 기본 작물 (레벨 1-10)
-        basic_crops = {
-            'Wheat': 1, 'Corn': 1, 'Sugarcane': 5, 'Carrot': 8, 'Cotton': 7
+        """아이템별 올바른 HayDay 언락 레벨 반환 (CSV 데이터 기반 다이나믹 로딩)"""
+        import os
+        import csv
+        
+        # CSV 파일 경로들
+        csv_files = [
+            'hayday_extracted_data/core_data/bakery_goods.csv',
+            'hayday_extracted_data/core_data/dairy_goods.csv', 
+            'hayday_extracted_data/core_data/fields.csv',
+            'hayday_extracted_data/core_data/animal_goods.csv',
+            'hayday_extracted_data/core_data/fruits.csv',
+            'hayday_extracted_data/core_data/jam_maker_goods.csv',
+            'hayday_extracted_data/core_data/juice_press_goods.csv',
+            'hayday_extracted_data/core_data/loom_goods.csv',
+            'hayday_extracted_data/core_data/pie_oven_goods.csv',
+            'hayday_extracted_data/core_data/cake_oven_goods.csv',
+            'hayday_extracted_data/core_data/candy_machine_goods.csv',
+            'hayday_extracted_data/core_data/ice_cream_maker_goods.csv'
+        ]
+        
+        # CSV에서 언락 레벨 로드 (캐시 사용)
+        if not hasattr(cls, '_unlock_level_cache'):
+            cls._unlock_level_cache = {}
+            
+            for csv_file in csv_files:
+                file_path = os.path.join(os.path.dirname(__file__), csv_file)
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            reader = csv.DictReader(f)
+                            for row in reader:
+                                name = row.get('Name', '').strip()
+                                unlock_level_str = row.get('UnlockLevel', '').strip()
+                                
+                                if name and unlock_level_str:
+                                    try:
+                                        unlock_level = int(unlock_level_str)
+                                        if name not in cls._unlock_level_cache:  # 첫 번째 발견만 사용
+                                            cls._unlock_level_cache[name] = unlock_level
+                                    except ValueError:
+                                        continue
+                    except Exception as e:
+                        print(f"[WARNING] CSV 로딩 실패: {csv_file} - {e}")
+                        continue
+        
+        # 캐시된 데이터에서 레벨 반환
+        if item_name in cls._unlock_level_cache:
+            return cls._unlock_level_cache[item_name]
+        
+        # 기본 작물들 (CSV에 없는 기본 아이템들)
+        basic_fallbacks = {
+            'Wheat': 1, 'Corn': 1, 'Soybean': 5, 'Sugarcane': 5, 'Carrot': 8,
+            'Egg': 6, 'Milk': 11, 'Bacon': 14
         }
         
-        # 동물 제품 (레벨 6-20)
-        animal_products = {
-            'Egg': 6, 'Milk': 11, 'Wool': 9, 'Bacon': 14
-        }
-        
-        # 기본 가공품 (레벨 3-15)
-        basic_processed = {
-            'Bread': 3, 'Cookie': 8, 'Butter': 13, 'Chicken Feed': 6, 'Cow Feed': 11
-        }
-        
-        # 과일들 (레벨 15-35) - Tree는 건물이므로 제외, Apple 등 과일만 포함
-        fruits = {
-            'Apple': 15, 'Cherry': 19, 'Peach': 28, 'Lemon': 23,
-            'Olive': 35, 'Orange': 26, 'Banana': 33, 'Plum': 31,
-            'Mango': 40, 'Coconut': 42, 'Guava': 44, 'Pomegranate': 46
-        }
-        
-        # 베리류 (레벨 20-30) - Bush는 건물이므로 제외
-        berries = {
-            'Blackberry': 20, 'Raspberry': 25, 'Blueberry': 30
-        }
-        
-        # 특수 작물 (레벨 13-35) - Tree/Bush는 제외
-        special_crops = {
-            'Cocoa': 13, 'Coffee': 23, 'Tomato': 20, 'Potato': 18, 
-            'Indigo': 25, 'Pumpkin': 30, 'Chili Pepper': 35
-        }
-        
-        # 아이템별 레벨 확인
-        if item_name in basic_crops:
-            return basic_crops[item_name]
-        elif item_name in animal_products:
-            return animal_products[item_name]
-        elif item_name in basic_processed:
-            return basic_processed[item_name]
-        elif item_name in fruits:
-            return fruits[item_name]
-        elif item_name in berries:
-            return berries[item_name]
-        elif item_name in special_crops:
-            return special_crops[item_name]
-        else:
-            # Tree/Bush (건물)이거나 알 수 없는 아이템은 높은 레벨로 설정
-            # AppleTree, CherryTree 등은 건물이므로 여기서 필터링됨
+        if item_name in basic_fallbacks:
+            return basic_fallbacks[item_name]
+            
+        # Tree/Bush (건물) 또는 알 수 없는 아이템은 높은 레벨로 설정
+        if 'Tree' in item_name or 'Bush' in item_name:
             return 50
+            
+        return 25  # 기본 중간 레벨
     
     # Helper methods for UI display data
     def _get_struggle_trend(self) -> str:
