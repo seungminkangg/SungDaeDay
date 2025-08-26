@@ -204,6 +204,106 @@
     </div>
 </div>
 
+<!-- 다이나믹 밸런싱 시각화 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-brain me-2"></i>다이나믹 밸런싱 시스템
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- 소스 태깅 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-tags me-1"></i>소스 태깅 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="source-tagging-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 생산 압박 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark py-2">
+                                <h6 class="mb-0"><i class="fas fa-pressure-alt me-1"></i>생산 압박 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="production-pressure-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 패턴 선정 분석 -->
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-chess me-1"></i>패턴 선정 분석</h6>
+                            </div>
+                            <div class="card-body p-3" id="pattern-selection-info">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <small>분석 중...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 실시간 밸런싱 상태 -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-chart-line me-1"></i>실시간 밸런싱 상태</h6>
+                            </div>
+                            <div class="card-body p-3" id="real-time-balance">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-primary mb-1" id="struggle-score">--</div>
+                                            <small class="text-muted">스트러글 스코어</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-warning mb-1" id="deficit-ratio">--</div>
+                                            <small class="text-muted">부족 비율</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-success mb-1" id="pressure-level">--</div>
+                                            <small class="text-muted">압박 레벨</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h4 text-info mb-1" id="balance-trend">--</div>
+                                            <small class="text-muted">밸런스 동향</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 고급 컨트롤 -->
 <div class="row mt-4">
     <div class="col-12">
@@ -538,6 +638,170 @@ function updateDynamicBalancingDisplay(data) {
         document.getElementById('efficiency-rating').textContent = metrics.efficiency_rating.toFixed(1);
         document.getElementById('efficiency-bar').style.width = `${Math.min(100, metrics.efficiency_rating)}%`;
     }
+    
+    // 새로운 밸런싱 시각화 업데이트
+    updateAdvancedBalancingVisuals(data);
+}
+
+// 고급 밸런싱 시각화 업데이트
+function updateAdvancedBalancingVisuals(data) {
+    // 소스 태깅 분석 업데이트
+    updateSourceTaggingInfo(data.source_tagging_analysis || {});
+    
+    // 생산 압박 분석 업데이트  
+    updateProductionPressureInfo(data.production_pressure_analysis || {});
+    
+    // 패턴 선정 분석 업데이트
+    updatePatternSelectionInfo(data.pattern_selection_analysis || {});
+    
+    // 실시간 밸런싱 상태 업데이트
+    updateRealTimeBalanceInfo(data);
+}
+
+// 소스 태깅 분석 정보 업데이트
+function updateSourceTaggingInfo(sourceData) {
+    const container = document.getElementById('source-tagging-info');
+    
+    if (!sourceData.resources || Object.keys(sourceData.resources).length === 0) {
+        container.innerHTML = '<small class="text-muted">데이터 없음</small>';
+        return;
+    }
+    
+    let html = '<div class="small">';
+    
+    // 상위 5개 자원의 소스 태깅 정보
+    const topResources = Object.entries(sourceData.resources).slice(0, 5);
+    
+    topResources.forEach(([itemName, tags]) => {
+        const primarySource = tags.primary_source || 'unknown';
+        const sourceIcon = {
+            'STORAGE': 'fa-warehouse',
+            'SHELF': 'fa-store',
+            'MARKET': 'fa-shopping-cart',
+            'PRODUCTION': 'fa-cogs'
+        }[primarySource] || 'fa-question';
+        
+        const confidenceColor = tags.confidence > 0.8 ? 'success' : tags.confidence > 0.5 ? 'warning' : 'danger';
+        
+        html += `
+            <div class="d-flex justify-content-between align-items-center mb-2 py-1 border-bottom">
+                <div class="d-flex align-items-center">
+                    <i class="fas ${sourceIcon} text-primary me-2"></i>
+                    <span class="fw-bold">${itemName}</span>
+                </div>
+                <span class="badge bg-${confidenceColor}">${(tags.confidence * 100).toFixed(0)}%</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 생산 압박 분석 정보 업데이트
+function updateProductionPressureInfo(pressureData) {
+    const container = document.getElementById('production-pressure-info');
+    
+    if (!pressureData.building_pressures) {
+        container.innerHTML = '<small class="text-muted">데이터 없음</small>';
+        return;
+    }
+    
+    let html = '<div class="small">';
+    
+    const overallPressure = pressureData.overall_pressure || 0;
+    const pressureColor = overallPressure > 0.8 ? 'danger' : overallPressure > 0.5 ? 'warning' : 'success';
+    
+    html += `
+        <div class="text-center mb-3">
+            <div class="h5 text-${pressureColor} mb-1">${(overallPressure * 100).toFixed(0)}%</div>
+            <small class="text-muted">전체 압박도</small>
+        </div>
+    `;
+    
+    // 상위 압박 건물들
+    const highPressureBuildings = pressureData.high_pressure_buildings || [];
+    if (highPressureBuildings.length > 0) {
+        html += '<div class="mb-2"><strong>고압박 건물:</strong></div>';
+        highPressureBuildings.slice(0, 3).forEach(building => {
+            html += `
+                <div class="d-flex justify-content-between mb-1">
+                    <span>${building.name}</span>
+                    <span class="text-danger">${(building.pressure * 100).toFixed(0)}%</span>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 패턴 선정 분석 정보 업데이트
+function updatePatternSelectionInfo(patternData) {
+    const container = document.getElementById('pattern-selection-info');
+    
+    if (!patternData.selected_pattern) {
+        container.innerHTML = '<small class="text-muted">데이터 없음</small>';
+        return;
+    }
+    
+    const pattern = patternData.selected_pattern;
+    const candidates = patternData.pattern_candidates || [];
+    
+    let html = '<div class="small">';
+    
+    // 선택된 패턴 정보
+    html += `
+        <div class="text-center mb-3">
+            <div class="badge bg-primary fs-6 mb-2">${pattern.name || pattern.id}</div>
+            <div class="text-muted small">선택된 패턴</div>
+        </div>
+    `;
+    
+    // 후보 패턴들
+    if (candidates.length > 1) {
+        html += '<div class="mb-2"><strong>후보 패턴:</strong></div>';
+        candidates.slice(0, 3).forEach(candidate => {
+            const isSelected = candidate.id === pattern.id;
+            const badgeColor = isSelected ? 'success' : 'secondary';
+            
+            html += `
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="badge bg-${badgeColor} me-2">${candidate.name}</span>
+                    <span class="small">${(candidate.weight * 100).toFixed(0)}%</span>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 실시간 밸런싱 상태 정보 업데이트  
+function updateRealTimeBalanceInfo(data) {
+    // 스트러글 스코어
+    const struggleScore = data.current_struggle_score || 0;
+    document.getElementById('struggle-score').textContent = struggleScore.toFixed(1);
+    
+    // 부족 비율
+    const deficitRatio = data.resource_deficit_ratio || 0;
+    document.getElementById('deficit-ratio').textContent = (deficitRatio * 100).toFixed(0) + '%';
+    
+    // 압박 레벨
+    const pressureLevel = data.production_pressure_analysis?.overall_pressure || 0;
+    document.getElementById('pressure-level').textContent = (pressureLevel * 100).toFixed(0) + '%';
+    
+    // 밸런스 동향
+    const trend = data.struggle_trend || 'stable';
+    const trendText = {
+        'increasing': '상승',
+        'decreasing': '하락', 
+        'stable': '안정',
+        'insufficient_data': '분석중'
+    }[trend] || '분석중';
+    document.getElementById('balance-trend').textContent = trendText;
 }
 
 // 스트러글 스코어 조정

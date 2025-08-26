@@ -3300,3 +3300,88 @@ class SungDaeSimulator:
         metadata['automation_score'] = automation_score
         
         return metadata
+    
+    def get_dynamic_balancing_display_data(self) -> Dict:
+        """UI 시각화를 위한 다이나믹 밸런싱 분석 데이터 반환"""
+        try:
+            # 현재 리소스 상태 분석
+            resource_analysis = self._analyze_resource_state()
+            
+            # 소스 태깅 분석
+            source_tagging = self._perform_source_tagging(resource_analysis)
+            
+            # 생산 압박 분석
+            production_pressure = self._calculate_production_pressure()
+            
+            # 패턴 후보 분석 
+            pattern_candidates = self._select_pattern_candidates(resource_analysis, production_pressure)
+            weighted_patterns = self._apply_pattern_weights(pattern_candidates, True)
+            selected_pattern = self._select_final_pattern(weighted_patterns)
+            
+            # UI 표시용 데이터 구성
+            return {
+                'balancing_metrics': {
+                    'pressure_index': production_pressure.get('overall_pressure', 0) * 100,
+                    'scarcity_index': resource_analysis.get('total_deficit_ratio', 0) * 100,
+                    'diversity_score': len(resource_analysis.get('abundant_items', [])) * 10,
+                    'efficiency_rating': max(0, 100 - self.current_struggle_score)
+                },
+                'source_tagging_analysis': {
+                    'resources': {
+                        item_name: {
+                            'primary_source': source_info.primary_source.value if hasattr(source_info.primary_source, 'value') else str(source_info.primary_source),
+                            'confidence': source_info.confidence,
+                            'alternative_sources': [src.value if hasattr(src, 'value') else str(src) for src in source_info.alternative_sources[:3]]
+                        }
+                        for item_name, source_info in source_tagging.items()
+                        if hasattr(source_info, 'primary_source')
+                    }
+                },
+                'production_pressure_analysis': {
+                    'overall_pressure': production_pressure.get('overall_pressure', 0),
+                    'building_pressures': production_pressure.get('building_pressure_details', {}),
+                    'high_pressure_buildings': [
+                        {
+                            'name': building_name,
+                            'pressure': pressure_data.get('pressure', 0)
+                        }
+                        for building_name, pressure_data in production_pressure.get('building_pressure_details', {}).items()
+                        if pressure_data.get('pressure', 0) > 0.7
+                    ][:5]
+                },
+                'pattern_selection_analysis': {
+                    'selected_pattern': {
+                        'id': selected_pattern.pattern_id if selected_pattern else 'unknown',
+                        'name': getattr(selected_pattern, 'name', selected_pattern.pattern_id if selected_pattern else 'Unknown')
+                    },
+                    'pattern_candidates': [
+                        {
+                            'id': pattern_id,
+                            'name': pattern_id.replace('_', ' ').title(),
+                            'weight': weight
+                        }
+                        for pattern_id, weight in weighted_patterns.items()
+                    ][:5]
+                },
+                'current_struggle_score': self.current_struggle_score,
+                'resource_deficit_ratio': len([r for r in self.resource_states.values() if r.is_deficit]) / max(1, len(self.resource_states)),
+                'struggle_trend': self._get_struggle_trend()
+            }
+            
+        except Exception as e:
+            print(f"[ERROR] 다이나믹 밸런싱 데이터 생성 실패: {e}")
+            # 기본 데이터 반환
+            return {
+                'balancing_metrics': {
+                    'pressure_index': 50,
+                    'scarcity_index': 30,
+                    'diversity_score': 60,
+                    'efficiency_rating': 70
+                },
+                'source_tagging_analysis': {'resources': {}},
+                'production_pressure_analysis': {'overall_pressure': 0.5, 'building_pressures': {}, 'high_pressure_buildings': []},
+                'pattern_selection_analysis': {'selected_pattern': {'id': 'unknown', 'name': 'Unknown'}, 'pattern_candidates': []},
+                'current_struggle_score': self.current_struggle_score,
+                'resource_deficit_ratio': 0.3,
+                'struggle_trend': 'stable'
+            }
