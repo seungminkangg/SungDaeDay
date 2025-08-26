@@ -1,6 +1,9 @@
 @echo off
 chcp 65001 > nul
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo.
 echo ========================================
 echo   HayDay Simulator - Windows Launcher
@@ -216,6 +219,9 @@ goto menu
 
 :menu
 cls
+REM Ensure we're in the correct directory
+cd /d "%~dp0"
+
 echo.
 echo ========================================
 echo   HayDay Simulator - Windows Launcher

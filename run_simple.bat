@@ -2,6 +2,9 @@
 chcp 65001 > nul
 setlocal enabledelayedexpansion
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo.
 echo ========================================================
 echo      [HayDay Dynamic Balancing Simulator]
