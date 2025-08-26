@@ -5,10 +5,10 @@ echo   HayDay Simulator Debug Mode
 echo ========================================
 echo.
 
-echo [1] 현재 디렉토리: %CD%
+echo [1] Current directory: %CD%
 echo.
 
-echo [2] 파일 목록:
+echo [2] File list:
 dir /b
 echo.
 
@@ -44,9 +44,19 @@ if exist "webui\app.py" (
 )
 echo.
 
+echo [7] Network IP detection...
+for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /c:"IPv4"') do (
+    for /f "tokens=1" %%j in ("%%i") do (
+        echo    [INFO] Detected IP: %%j
+        goto ip_done
+    )
+)
+:ip_done
+echo.
+
 echo ========================================
-echo   진단 완료 - 위 정보를 확인하세요
+echo   Diagnosis Complete
 echo ========================================
 echo.
-echo 아무 키나 누르면 종료됩니다...
+echo Press any key to exit...
 pause > nul
