@@ -26,11 +26,27 @@ echo.
 echo === Quick Start Mode ===
 echo.
 
-REM Check basics
+REM Check basics - show current info for debugging
+echo Current directory: %CD%
+echo.
+echo Files in current directory:
+dir /b | findstr /v "\.git"
+echo.
+
 if not exist "webui\" (
-    echo [ERROR] webui folder missing
-    echo Run from project root directory
-    pause & goto menu
+    if not exist "webui" (
+        echo [ERROR] webui folder missing
+        echo Current location: %CD%
+        echo.
+        echo Make sure you are in the SungDaeDay project directory
+        echo and that the webui folder exists.
+        echo.
+        pause & goto menu
+    ) else (
+        echo [INFO] Found webui folder (no backslash)
+    )
+) else (
+    echo [INFO] Found webui\ folder
 )
 
 python --version >nul 2>&1 || py --version >nul 2>&1
@@ -53,7 +69,18 @@ for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /c:"IPv4"') do (
 )
 :start_flask
 
-cd webui
+REM Change to webui directory (try both ways)
+if exist "webui\" (
+    cd webui
+) else (
+    if exist "webui" (
+        cd webui
+    ) else (
+        echo [ERROR] Cannot find webui folder
+        pause & goto menu
+    )
+)
+
 echo.
 echo ========================================
 echo   Server Starting!
@@ -64,7 +91,15 @@ echo   Press Ctrl+C to stop
 echo ========================================
 echo.
 
-%PYTHON_CMD% app.py
+if exist "app.py" (
+    %PYTHON_CMD% app.py
+) else (
+    echo [ERROR] app.py not found in webui folder
+    echo Current webui directory contents:
+    dir /b
+    pause
+)
+
 cd ..
 pause
 goto menu
@@ -79,7 +114,15 @@ echo [2] Files:
 dir /b | findstr /v "\.git"
 
 echo [3] webui folder:
-if exist "webui\" (echo     [OK] exists) else (echo     [ERROR] missing)
+if exist "webui\" (
+    echo     [OK] webui\ exists
+) else (
+    if exist "webui" (
+        echo     [OK] webui exists (no backslash)
+    ) else (
+        echo     [ERROR] webui missing
+    )
+)
 
 echo [4] Python check:
 python --version >nul 2>&1 && echo     [OK] python available || echo     [ERROR] python missing
@@ -89,7 +132,15 @@ echo [5] requirements.txt:
 if exist "requirements.txt" (echo     [OK] exists) else (echo     [ERROR] missing)
 
 echo [6] webui/app.py:
-if exist "webui\app.py" (echo     [OK] exists) else (echo     [ERROR] missing)
+if exist "webui\app.py" (
+    echo     [OK] webui\app.py exists
+) else (
+    if exist "webui/app.py" (
+        echo     [OK] webui/app.py exists
+    ) else (
+        echo     [ERROR] webui/app.py missing
+    )
+)
 
 echo [7] Network IP:
 for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /c:"IPv4"') do (
@@ -117,9 +168,15 @@ echo Running with admin privileges...
 echo.
 
 REM Check project structure
+echo Checking project structure...
+echo Current directory: %CD%
 if not exist "webui\" (
-    echo [ERROR] webui folder missing
-    pause & goto menu
+    if not exist "webui" (
+        echo [ERROR] webui folder missing
+        echo Current files:
+        dir /b
+        pause & goto menu
+    )
 )
 
 REM Python installation with Chocolatey if needed
