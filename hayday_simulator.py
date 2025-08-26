@@ -6,10 +6,6 @@ Based on extracted CSV data and dynamic balancing system specifications
 
 import pandas as pd
 import numpy as np
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import json
 import os
 import random
@@ -18,6 +14,24 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 import math
+
+# Optional imports for UI features
+try:
+    import streamlit as st
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
+    # Create dummy objects to prevent errors
+    class DummyStreamlit:
+        def __getattr__(self, name):
+            def dummy_func(*args, **kwargs):
+                pass
+            return dummy_func
+    st = DummyStreamlit()
+    px = go = make_subplots = None
 
 # Configuration
 DATA_PATH = os.path.join(os.path.dirname(__file__), "hayday_extracted_data", "core_data")
@@ -1504,4 +1518,12 @@ def create_dashboard():
             st.info("⏰ 실시간 주문 생성 가능")
 
 if __name__ == "__main__":
-    create_dashboard()
+    if HAS_STREAMLIT:
+        create_dashboard()
+    else:
+        print("Streamlit not available. Running in headless mode.")
+        print("Creating simulator instance...")
+        simulator = HayDaySimulator()
+        print("HayDay Simulator created successfully!")
+        print(f"Available items: {len(simulator.get_available_items())}")
+        print("Use this simulator in your Flask app or other applications.")
