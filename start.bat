@@ -64,7 +64,7 @@ python --version >nul 2>&1 && set PYTHON_CMD=python || set PYTHON_CMD=py
 
 REM Install essentials
 echo Installing Flask essentials...
-%PYTHON_CMD% -m pip install flask pandas numpy requests openpyxl --quiet --user >nul 2>&1
+%PYTHON_CMD% -m pip install flask pandas numpy requests openpyxl --quiet --user
 
 REM Get network IP
 for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /c:"IPv4"') do (
@@ -200,13 +200,9 @@ if errorlevel 1 (
 REM Set Python command
 python --version >nul 2>&1 && set PYTHON_CMD=python || set PYTHON_CMD=py
 
-REM Install packages
-echo Installing packages from requirements.txt...
-if exist "requirements.txt" (
-    %PYTHON_CMD% -m pip install -r requirements.txt
-) else (
-    %PYTHON_CMD% -m pip install flask pandas numpy requests openpyxl
-)
+REM Install packages (avoid requirements.txt encoding issues)
+echo Installing essential packages directly...
+%PYTHON_CMD% -m pip install flask pandas numpy requests openpyxl
 
 REM Firewall rule
 echo Adding firewall rule...
