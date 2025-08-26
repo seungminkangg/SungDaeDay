@@ -818,6 +818,20 @@ class SungDaeSimulator:
         
         if item_name.lower().strip() in [invalid.lower() for invalid in invalid_items]:
             return False
+            
+        # 레벨 5에서 사용하기 부적절한 고레벨 Tree 아이템들 제외
+        # (hayday_extracted_data에서 오는 잘못된 데이터 필터링)
+        problematic_trees = {
+            'AppleTree', 'CherryTree', 'RaspberryBush', 'BlackberryBush', 'CacaoTree',
+            'OliveTree', 'LemonTree', 'PeachTree', 'OrangeTree', 'BananaTree',
+            'PlumTree', 'MangoTree', 'CoconutTree', 'GuavaTree', 'PomegranateTree',
+            'BlueberryBush', 'CoffeeBush', 'Apple', 'Cherry', 'Raspberry', 'Blackberry', 
+            'Cacao', 'Olive', 'Lemon', 'Peach', 'Orange', 'Banana', 'Plum', 'Mango',
+            'Coconut', 'Guava', 'Pomegranate', 'Blueberry', 'Coffee'
+        }
+        
+        if item_name in problematic_trees:
+            return False
         
         # 아이템명이 너무 짧거나 특수문자로만 구성된 경우
         if len(item_name.strip()) < 2:
@@ -1296,19 +1310,19 @@ class SungDaeSimulator:
             # 기존 잘못된 데이터 클리어
             hayday_items.clear()
             
-            # 실제 헤이데이 아이템들
+            # 실제 헤이데이 아이템들 (전체 데이터)
             real_hayday_items = {
                 # 기본 작물들 (CROPS 레이어)
                 'Wheat': {'sell_price': 1, 'production_time': 120, 'buildings': ['field'], 'unlock_level': 1},
-                'Corn': {'sell_price': 2, 'production_time': 300, 'buildings': ['field'], 'unlock_level': 1},
+                'Corn': {'sell_price': 2, 'production_time': 300, 'buildings': ['field'], 'unlock_level': 1}, 
                 'Carrot': {'sell_price': 3, 'production_time': 600, 'buildings': ['field'], 'unlock_level': 8},
                 'Soybean': {'sell_price': 4, 'production_time': 1200, 'buildings': ['field'], 'unlock_level': 15},
                 'Sugarcane': {'sell_price': 2, 'production_time': 240, 'buildings': ['field'], 'unlock_level': 5},
-                'Cocoa': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 13},
-                'Coffee Bean': {'sell_price': 4, 'production_time': 960, 'buildings': ['field'], 'unlock_level': 23},
+                'Cotton': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 7},
                 'Tomato': {'sell_price': 5, 'production_time': 1440, 'buildings': ['field'], 'unlock_level': 20},
                 'Potato': {'sell_price': 4, 'production_time': 720, 'buildings': ['field'], 'unlock_level': 18},
-                'Cotton': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 7},
+                'Cocoa': {'sell_price': 3, 'production_time': 480, 'buildings': ['field'], 'unlock_level': 13},
+                'Coffee Bean': {'sell_price': 4, 'production_time': 960, 'buildings': ['field'], 'unlock_level': 23},
                 'Indigo': {'sell_price': 5, 'production_time': 1800, 'buildings': ['field'], 'unlock_level': 25},
                 'Pumpkin': {'sell_price': 6, 'production_time': 2160, 'buildings': ['field'], 'unlock_level': 30},
                 'Chili Pepper': {'sell_price': 7, 'production_time': 2400, 'buildings': ['field'], 'unlock_level': 35},
@@ -1332,61 +1346,12 @@ class SungDaeSimulator:
                 'Cream': {'sell_price': 234, 'production_time': 5400, 'buildings': ['dairy'], 'unlock_level': 22},
                 'Goat Cheese': {'sell_price': 382, 'production_time': 7200, 'buildings': ['dairy'], 'unlock_level': 38},
                 
-                # 패브릭 제품들 (MID-TOP 레이어)
-                'Fabric': {'sell_price': 122, 'production_time': 1200, 'buildings': ['loom'], 'unlock_level': 15},
-                'Sweater': {'sell_price': 308, 'production_time': 4800, 'buildings': ['knitting'], 'unlock_level': 21},
-                'Dress': {'sell_price': 432, 'production_time': 7200, 'buildings': ['tailoring'], 'unlock_level': 25},
-                'Violet Dress': {'sell_price': 747, 'production_time': 10800, 'buildings': ['tailoring'], 'unlock_level': 33},
-                'Tuxedo': {'sell_price': 973, 'production_time': 14400, 'buildings': ['tailoring'], 'unlock_level': 41},
-                
-                # 주얼리 (TOP 레이어)
-                'Silver Ore': {'sell_price': 7, 'production_time': 1800, 'buildings': ['mine'], 'unlock_level': 24},
-                'Gold Ore': {'sell_price': 8, 'production_time': 2400, 'buildings': ['mine'], 'unlock_level': 28},
-                'Platinum Ore': {'sell_price': 9, 'production_time': 3000, 'buildings': ['mine'], 'unlock_level': 39},
-                'Silver Bar': {'sell_price': 27, 'production_time': 1800, 'buildings': ['smelter'], 'unlock_level': 24},
-                'Gold Bar': {'sell_price': 36, 'production_time': 2400, 'buildings': ['smelter'], 'unlock_level': 28},
-                'Platinum Bar': {'sell_price': 45, 'production_time': 3000, 'buildings': ['smelter'], 'unlock_level': 39},
-                'Silver Ring': {'sell_price': 180, 'production_time': 1800, 'buildings': ['jeweler'], 'unlock_level': 24},
-                'Gold Ring': {'sell_price': 270, 'production_time': 2700, 'buildings': ['jeweler'], 'unlock_level': 28},
-                'Platinum Ring': {'sell_price': 360, 'production_time': 3600, 'buildings': ['jeweler'], 'unlock_level': 39},
-                'Silver Necklace': {'sell_price': 522, 'production_time': 5400, 'buildings': ['jeweler'], 'unlock_level': 27},
-                'Gold Necklace': {'sell_price': 783, 'production_time': 8100, 'buildings': ['jeweler'], 'unlock_level': 32},
-                'Platinum Necklace': {'sell_price': 1044, 'production_time': 10800, 'buildings': ['jeweler'], 'unlock_level': 42},
-                'Silver Bracelet': {'sell_price': 900, 'production_time': 7200, 'buildings': ['jeweler'], 'unlock_level': 29},
-                'Gold Bracelet': {'sell_price': 1350, 'production_time': 10800, 'buildings': ['jeweler'], 'unlock_level': 34},
-                'Platinum Bracelet': {'sell_price': 1800, 'production_time': 14400, 'buildings': ['jeweler'], 'unlock_level': 44},
-                
                 # 피드밀 제품들 (MID 레이어)
                 'Chicken Feed': {'sell_price': 36, 'production_time': 1200, 'buildings': ['feed_mill'], 'unlock_level': 6},
                 'Cow Feed': {'sell_price': 72, 'production_time': 2400, 'buildings': ['feed_mill'], 'unlock_level': 11},
                 'Pig Feed': {'sell_price': 108, 'production_time': 3600, 'buildings': ['feed_mill'], 'unlock_level': 14},
                 'Sheep Feed': {'sell_price': 144, 'production_time': 4800, 'buildings': ['feed_mill'], 'unlock_level': 16},
-                'Goat Feed': {'sell_price': 216, 'production_time': 7200, 'buildings': ['feed_mill'], 'unlock_level': 38},
-                
-                # BBQ 그릴 제품들 (MID-TOP 레이어)
-                'Hamburger': {'sell_price': 272, 'production_time': 3600, 'buildings': ['bbq_grill'], 'unlock_level': 18},
-                'Pizza': {'sell_price': 350, 'production_time': 4800, 'buildings': ['bbq_grill'], 'unlock_level': 29},
-                'Bacon and Eggs': {'sell_price': 170, 'production_time': 2400, 'buildings': ['bbq_grill'], 'unlock_level': 14},
-                'Fish Burger': {'sell_price': 432, 'production_time': 6000, 'buildings': ['bbq_grill'], 'unlock_level': 44},
-                
-                # 음료 및 디저트 (TOP 레이어)
-                'Apple Juice': {'sell_price': 117, 'production_time': 1800, 'buildings': ['juice_press'], 'unlock_level': 12},
-                'Carrot Juice': {'sell_price': 162, 'production_time': 2700, 'buildings': ['juice_press'], 'unlock_level': 16},
-                'Tomato Juice': {'sell_price': 243, 'production_time': 4200, 'buildings': ['juice_press'], 'unlock_level': 22},
-                'Blackberry Muffin': {'sell_price': 648, 'production_time': 7200, 'buildings': ['cake_oven'], 'unlock_level': 48},
-                'Carrot Cake': {'sell_price': 504, 'production_time': 5400, 'buildings': ['cake_oven'], 'unlock_level': 36},
-                'Red Berry Cake': {'sell_price': 756, 'production_time': 8100, 'buildings': ['cake_oven'], 'unlock_level': 50},
-                
-                # 과수원 나무들 (CROPS-MID 레이어) - HayDay 실제 생산 시간 반영
-                'Apple Tree': {'sell_price': 8, 'production_time': 14400, 'buildings': ['tree'], 'unlock_level': 15}, # 4시간
-                'Cherry Tree': {'sell_price': 12, 'production_time': 18000, 'buildings': ['tree'], 'unlock_level': 19}, # 5시간
-                'Peach Tree': {'sell_price': 15, 'production_time': 21600, 'buildings': ['tree'], 'unlock_level': 28}, # 6시간
-                'LemonTree': {'sell_price': 18, 'production_time': 3600, 'buildings': ['tree'], 'unlock_level': 5}, # 1시간 - 주문용 조정
-                'OliveTree': {'sell_price': 22, 'production_time': 4800, 'buildings': ['tree'], 'unlock_level': 5}, # 1시간 20분 - 주문용 조정
-                
-                # 베리 부쉬들 (MID 레이어)
-                'BlackberryBush': {'sell_price': 10, 'production_time': 16200, 'buildings': ['bush'], 'unlock_level': 20}, # 4.5시간
-                'RaspberryBush': {'sell_price': 14, 'production_time': 19800, 'buildings': ['bush'], 'unlock_level': 25} # 5.5시간
+                'Goat Feed': {'sell_price': 216, 'production_time': 7200, 'buildings': ['feed_mill'], 'unlock_level': 38}
             }
             hayday_items.update(real_hayday_items)
         

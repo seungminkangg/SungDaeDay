@@ -81,8 +81,9 @@ def init_simulator():
         
         # SungDae 시뮬레이터 초기화 (실제 HayDay 아이템 데이터 사용)
         hayday_items = simulator.get_all_items_data()
-        sungdae_simulator = SungDaeSimulator(hayday_items=hayday_items, player_level=50)
+        sungdae_simulator = SungDaeSimulator(hayday_items=hayday_items, player_level=5)  # 레벨 5로 시작
         print(f"SungDae Simulator initialization completed with {len(hayday_items)} items")
+        print(f"Player level initialized to: {sungdae_simulator.player_level}")
         
         # 로컬라이제이션 초기화 - 상대 경로 사용 (core_data 디렉토리 사용)
         localization_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data")
@@ -856,10 +857,25 @@ def sungdae_available_items():
                     "unlock_level": sungdae_simulator.hayday_items.get(item_name, {}).get('unlock_level', 1)
                 })
         
+        # 디버그 정보 추가
+        debug_info = {
+            "player_level": sungdae_simulator.player_level,
+            "total_items_in_db": len(sungdae_simulator.hayday_items),
+            "unlocked_items": len(items),
+            "level_breakdown": {}
+        }
+        
+        # 레벨별 아이템 수 분석
+        for level in range(1, 11):
+            count = sum(1 for item_name, item_data in sungdae_simulator.hayday_items.items() 
+                       if item_data.get('unlock_level', 1) <= level and sungdae_simulator._is_valid_item(item_name))
+            debug_info["level_breakdown"][f"level_{level}"] = count
+        
         return jsonify({
             "success": True,
             "items": items,
-            "total_count": len(items)
+            "total_count": len(items),
+            "debug_info": debug_info
         })
         
     except Exception as e:
@@ -922,6 +938,39 @@ def sungdae_reset_inventory():
         return jsonify({
             "success": True,
             "message": "인벤토리가 초기 상태로 재설정되었습니다."
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@app.route('/api/sungdae/debug/all-items', methods=['GET'])
+def sungdae_debug_all_items():
+    """디버그: 전체 아이템 데이터 확인"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    try:
+        all_items = []
+        for item_name, item_data in sungdae_simulator.hayday_items.items():
+            all_items.append({
+                "name": item_name,
+                "unlock_level": item_data.get('unlock_level', 1),
+                "sell_price": item_data.get('sell_price', 0),
+                "production_time": item_data.get('production_time', 0),
+                "buildings": item_data.get('buildings', [])
+            })
+        
+        # 언락 레벨순으로 정렬
+        all_items.sort(key=lambda x: x['unlock_level'])
+        
+        return jsonify({
+            "success": True,
+            "total_items": len(all_items),
+            "items": all_items,
+            "player_level": sungdae_simulator.player_level
         })
         
     except Exception as e:
