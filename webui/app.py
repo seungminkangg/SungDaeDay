@@ -858,9 +858,11 @@ def sungdae_available_items():
                     "unlock_level": sungdae_simulator.hayday_items.get(item_name, {}).get('unlock_level', 1)
                 })
         
-        # 디버그 정보 추가
+        # 디버그 정보 및 barn 정보 추가
+        barn_capacity = sungdae_simulator._calculate_barn_capacity()
         debug_info = {
             "player_level": sungdae_simulator.player_level,
+            "barn_capacity": barn_capacity,
             "total_items_in_db": len(sungdae_simulator.hayday_items),
             "unlocked_items": len(items),
             "level_breakdown": {}

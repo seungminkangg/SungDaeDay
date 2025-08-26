@@ -105,7 +105,7 @@ class SungDaeSimulator:
     
     def __init__(self, hayday_items: Dict, player_level: int = 5):
         self.hayday_items = hayday_items
-        self.player_level = player_level
+        self._player_level = player_level  # private 변수로 저장
         
         # 상태 추적
         self.resource_states: Dict[str, ResourceState] = {}
@@ -127,11 +127,123 @@ class SungDaeSimulator:
         self._initialize_resource_states()
         self._initialize_production_systems()
         
+        barn_capacity = self._calculate_barn_capacity()
+        total_items = sum(resource.current_stock for resource in self.resource_states.values())
+        
         print(f"[INIT] SungDae 시뮬레이터 초기화 완료:")
         print(f"  - 플레이어 레벨: {self.player_level}")
+        print(f"  - Barn 용량: {barn_capacity}개")
+        print(f"  - 현재 보관량: {total_items}개 ({total_items/barn_capacity*100:.1f}%)")
         print(f"  - 전체 아이템 DB: {len(self.hayday_items)}")
         print(f"  - 사용 가능한 아이템: {len(self.resource_states)}")
         print(f"  - 레벨 {self.player_level} 이하 아이템들: {list(self.resource_states.keys())[:10]}...")
+    
+    @property
+    def player_level(self) -> int:
+        """플레이어 레벨 getter"""
+        return self._player_level
+    
+    @player_level.setter
+    def player_level(self, new_level: int):
+        """플레이어 레벨 setter - 레벨 변경 시 인벤토리 자동 업그레이드"""
+        if new_level != self._player_level:
+            old_level = self._player_level
+            self._player_level = new_level
+            print(f"[LEVEL_CHANGE] 플레이어 레벨 변경: {old_level} -> {new_level}")
+            
+            # 인벤토리 재초기화 (새로운 레벨에 맞게)
+            self._upgrade_inventory_for_new_level(old_level, new_level)
+    
+    def _upgrade_inventory_for_new_level(self, old_level: int, new_level: int):
+        """레벨 변경에 따른 인벤토리 업그레이드"""
+        # 새로운 barn 용량 계산
+        new_barn_capacity = self._calculate_barn_capacity()
+        
+        # 레벨 증가 시 처리
+        if new_level > old_level:
+            print(f"[UPGRADE] Barn 용량 업그레이드: {new_barn_capacity}개")
+            
+            # 기존 아이템들의 최대 용량 업그레이드
+            for item_name, resource in self.resource_states.items():
+                old_max = resource.max_capacity
+                
+                # 레이어별 배수 적용
+                layer_multipliers = {
+                    ItemLayer.CROPS: 1.0,
+                    ItemLayer.MID: 0.6,
+                    ItemLayer.TOP: 0.3
+                }
+                
+                new_max = int(new_barn_capacity * layer_multipliers.get(resource.layer, 0.6))
+                new_max = max(resource.current_stock, new_max)  # 현재 재고보다는 커야 함
+                resource.max_capacity = new_max
+                
+                print(f"[UPGRADE] {item_name}: 최대용량 {old_max} -> {new_max}")
+            
+            # 새로 언락된 아이템들 추가
+            self._add_newly_unlocked_items(old_level, new_level)
+        
+        # 레벨 감소 시 처리 (드물지만)
+        elif new_level < old_level:
+            print(f"[DOWNGRADE] Barn 용량 축소: {new_barn_capacity}개")
+            self._remove_overlevel_items(new_level)
+    
+    def _add_newly_unlocked_items(self, old_level: int, new_level: int):
+        """새로 언락된 아이템들을 인벤토리에 추가"""
+        barn_capacity = self._calculate_barn_capacity()
+        layer_classification = self._classify_items_by_layer()
+        
+        newly_unlocked = []
+        for item_name, item_data in self.hayday_items.items():
+            if not self._is_valid_item(item_name):
+                continue
+                
+            unlock_level = item_data.get('unlock_level', 1)
+            if old_level < unlock_level <= new_level:
+                # 새로 언락된 아이템
+                layer = layer_classification.get(item_name, ItemLayer.CROPS)
+                
+                layer_multipliers = {
+                    ItemLayer.CROPS: 1.0,
+                    ItemLayer.MID: 0.6,
+                    ItemLayer.TOP: 0.3
+                }
+                
+                # 초기 재고 설정 (새로 언락된 아이템은 적게)
+                base_stock = random.randint(1, 3)
+                max_capacity = int(barn_capacity * layer_multipliers[layer])
+                max_capacity = max(base_stock, max_capacity)
+                
+                self.resource_states[item_name] = ResourceState(
+                    item_name=item_name,
+                    layer=layer,
+                    current_stock=base_stock,
+                    max_capacity=max_capacity,
+                    production_time=item_data.get('production_time', 300),
+                    production_buildings=item_data.get('buildings', []),
+                    shelf_available=random.choice([True, False]),
+                    market_available=layer != ItemLayer.TOP
+                )
+                
+                newly_unlocked.append(item_name)
+        
+        if newly_unlocked:
+            print(f"[NEW_UNLOCK] 새로 언락된 아이템: {newly_unlocked}")
+    
+    def _remove_overlevel_items(self, new_level: int):
+        """레벨보다 높은 아이템들 제거 (레벨 감소 시)"""
+        to_remove = []
+        for item_name, resource in self.resource_states.items():
+            item_data = self.hayday_items.get(item_name, {})
+            unlock_level = item_data.get('unlock_level', 1)
+            if unlock_level > new_level:
+                to_remove.append(item_name)
+        
+        for item_name in to_remove:
+            del self.resource_states[item_name]
+        
+        if to_remove:
+            print(f"[REMOVE] 제거된 고레벨 아이템: {to_remove}")
     
     def _initialize_delivery_patterns(self):
         """납품 패턴 초기화 (PDF: 패턴 가중치 적용)"""
@@ -192,23 +304,58 @@ class SungDaeSimulator:
                 
             layer = layer_classification.get(item_name, ItemLayer.CROPS)
             
-            # 초기 재고량은 레이어에 따라 다르게 설정
-            base_stock = {
-                ItemLayer.CROPS: random.randint(20, 50),
-                ItemLayer.MID: random.randint(10, 30),
-                ItemLayer.TOP: random.randint(3, 15)
-            }[layer]
+            # 레벨별 barn 용량 계산
+            barn_capacity = self._calculate_barn_capacity()
+            
+            # 초기 재고량은 레이어와 레벨에 따라 다르게 설정
+            layer_multipliers = {
+                ItemLayer.CROPS: 1.0,    # 작물은 많이 저장
+                ItemLayer.MID: 0.6,      # 중급품은 적당히
+                ItemLayer.TOP: 0.3       # 고급품은 적게
+            }
+            
+            # 레벨별 기본 저장량 (barn 용량에 비례)
+            base_percentage = random.uniform(0.3, 0.7)  # barn 용량의 30-70%
+            base_stock = int(barn_capacity * layer_multipliers[layer] * base_percentage)
+            base_stock = max(1, base_stock)  # 최소 1개
+            
+            # 최대 용량은 barn 용량과 레이어에 따라 결정
+            max_capacity = int(barn_capacity * layer_multipliers[layer])
+            max_capacity = max(base_stock, max_capacity)  # 현재 재고보다는 커야 함
             
             self.resource_states[item_name] = ResourceState(
                 item_name=item_name,
                 layer=layer,
                 current_stock=base_stock,
-                max_capacity=base_stock * 2,
+                max_capacity=max_capacity,
                 production_time=item_data.get('production_time', 300),
                 production_buildings=item_data.get('buildings', []),
                 shelf_available=random.choice([True, False]),
                 market_available=layer != ItemLayer.TOP  # TOP 레이어는 마켓 구매 불가
             )
+    
+    def _calculate_barn_capacity(self) -> int:
+        """플레이어 레벨에 따른 barn 용량 계산 (HayDay 실제 진행 반영)"""
+        # HayDay 실제 barn 업그레이드 패턴 근사치
+        # 레벨 1: 25개 시작
+        # 레벨 5: 약 35개
+        # 레벨 10: 약 50개
+        # 레벨 20: 약 75개
+        # 레벨 50: 약 150개
+        
+        base_capacity = 25  # 초기 barn 용량
+        level_bonus = self.player_level * 2.5  # 레벨당 2.5개씩 증가
+        
+        # 레벨이 높아질수록 증가율이 조금씩 상승 (exponential growth)
+        if self.player_level >= 10:
+            level_bonus += (self.player_level - 10) * 0.5
+        if self.player_level >= 20:
+            level_bonus += (self.player_level - 20) * 0.3
+        
+        total_capacity = int(base_capacity + level_bonus)
+        
+        # 최소 25개, 최대 200개로 제한
+        return max(25, min(200, total_capacity))
     
     def _initialize_production_systems(self):
         """생산 시스템 초기화"""

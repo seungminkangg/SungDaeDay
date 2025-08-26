@@ -145,6 +145,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-boxes me-2"></i>현재 인벤토리
+                    <small class="text-light ms-2" id="barn-capacity-info">Barn: -/-</small>
                 </h5>
                 <div class="btn-group" role="group">
                     <button class="btn btn-sm btn-outline-info" onclick="refreshInventory()">
@@ -635,9 +636,13 @@ function refreshInventory() {
             // 디버그 정보 표시
             if (data.debug_info) {
                 console.log('플레이어 레벨:', data.debug_info.player_level);
+                console.log('Barn 용량:', data.debug_info.barn_capacity);
                 console.log('전체 DB 아이템:', data.debug_info.total_items_in_db);
                 console.log('언락된 아이템:', data.debug_info.unlocked_items);
                 console.log('레벨별 아이템 수:', data.debug_info.level_breakdown);
+                
+                // Barn 용량 표시 업데이트
+                updateBarnCapacityDisplay(data.debug_info.barn_capacity);
             }
         } else {
             console.error('인벤토리 조회 실패:', data.error);
@@ -880,6 +885,18 @@ function resetInventory() {
         console.error('Error:', error);
         showToast('API 요청 실패: ' + error, 'error');
     });
+}
+
+// Barn 용량 표시 업데이트
+function updateBarnCapacityDisplay(barnCapacity) {
+    if (!currentInventory || !barnCapacity) return;
+    
+    // 현재 총 보관량 계산 (모든 아이템 합계)
+    const totalUsed = currentInventory.reduce((sum, item) => sum + item.current_stock, 0);
+    
+    // Barn 용량 정보 업데이트
+    document.getElementById('barn-capacity-info').innerHTML = 
+        `Barn: <span class="${totalUsed > barnCapacity * 0.9 ? 'text-warning' : 'text-light'}">${totalUsed}</span>/${barnCapacity}`;
 }
 </script>
 
