@@ -718,8 +718,18 @@ def sungdae_batch_orders():
     data = request.get_json()
     count = data.get('count', 5)
     delivery_types = data.get('delivery_types', ['Truck', 'Train'])
+    player_level = data.get('player_level', 5)
+    struggle_score = data.get('struggle_score')
+    use_struggle_adjustment = data.get('use_struggle_adjustment', True)
     
     try:
+        # 플레이어 레벨 업데이트 (단일 주문과 동일)
+        sungdae_simulator.player_level = player_level
+        
+        # 스트러글 스코어 수동 설정 (단일 주문과 동일)
+        if struggle_score is not None:
+            sungdae_simulator.adjust_user_struggle_score(float(struggle_score))
+        
         orders = []
         for i in range(count):
             # 랜덤 납품 타입 선택
@@ -727,7 +737,11 @@ def sungdae_batch_orders():
             delivery_type_str = random.choice(delivery_types)
             delivery_type = SungDaeDeliveryType.TRAIN if delivery_type_str == 'Train' else SungDaeDeliveryType.TRUCK
             
-            order = sungdae_simulator.generate_delivery_order(delivery_type=delivery_type)
+            # 단일 주문과 동일한 파라미터 사용
+            order = sungdae_simulator.generate_delivery_order(
+                delivery_type=delivery_type,
+                use_struggle_adjustment=use_struggle_adjustment
+            )
             
             if order:
                 orders.append({
@@ -850,6 +864,71 @@ def sungdae_available_items():
         
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/sungdae/inventory/update', methods=['POST'])
+def sungdae_update_inventory():
+    """SungDae 시뮬레이터 인벤토리 수량 수정"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    data = request.get_json()
+    updates = data.get('updates', {})  # {item_name: new_quantity}
+    
+    try:
+        updated_items = []
+        for item_name, new_quantity in updates.items():
+            if item_name in sungdae_simulator.resource_states:
+                resource = sungdae_simulator.resource_states[item_name]
+                old_quantity = resource.current_stock
+                resource.current_stock = max(0, int(new_quantity))
+                
+                # 최대 용량 조정 (현재 재고가 더 크면)
+                if resource.current_stock > resource.max_capacity:
+                    resource.max_capacity = resource.current_stock * 2
+                
+                updated_items.append({
+                    "item": item_name,
+                    "old_quantity": old_quantity,
+                    "new_quantity": resource.current_stock,
+                    "max_capacity": resource.max_capacity
+                })
+        
+        # 시스템 밸런싱 지수 재계산 (시뮬레이터에 메소드가 있다면)
+        if hasattr(sungdae_simulator, '_recalculate_system_indices'):
+            sungdae_simulator._recalculate_system_indices()
+        
+        return jsonify({
+            "success": True,
+            "updated_items": updated_items,
+            "message": f"{len(updated_items)}개 아이템 재고 업데이트 완료"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@app.route('/api/sungdae/inventory/reset', methods=['POST'])
+def sungdae_reset_inventory():
+    """SungDae 시뮬레이터 인벤토리 초기화"""
+    if not sungdae_simulator:
+        return jsonify({"error": "SungDae Simulator not initialized"}), 500
+    
+    try:
+        # 리소스 상태 재초기화
+        sungdae_simulator._initialize_resource_states()
+        
+        return jsonify({
+            "success": True,
+            "message": "인벤토리가 초기 상태로 재설정되었습니다."
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
 
 if __name__ == '__main__':
     print("HayDay Dynamic Balancing Web UI")
