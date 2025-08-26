@@ -1375,7 +1375,18 @@ class SungDaeSimulator:
                 'Tomato Juice': {'sell_price': 243, 'production_time': 4200, 'buildings': ['juice_press'], 'unlock_level': 22},
                 'Blackberry Muffin': {'sell_price': 648, 'production_time': 7200, 'buildings': ['cake_oven'], 'unlock_level': 48},
                 'Carrot Cake': {'sell_price': 504, 'production_time': 5400, 'buildings': ['cake_oven'], 'unlock_level': 36},
-                'Red Berry Cake': {'sell_price': 756, 'production_time': 8100, 'buildings': ['cake_oven'], 'unlock_level': 50}
+                'Red Berry Cake': {'sell_price': 756, 'production_time': 8100, 'buildings': ['cake_oven'], 'unlock_level': 50},
+                
+                # 과수원 나무들 (CROPS-MID 레이어) - HayDay 실제 생산 시간 반영
+                'Apple Tree': {'sell_price': 8, 'production_time': 14400, 'buildings': ['tree'], 'unlock_level': 15}, # 4시간
+                'Cherry Tree': {'sell_price': 12, 'production_time': 18000, 'buildings': ['tree'], 'unlock_level': 19}, # 5시간
+                'Peach Tree': {'sell_price': 15, 'production_time': 21600, 'buildings': ['tree'], 'unlock_level': 28}, # 6시간
+                'LemonTree': {'sell_price': 18, 'production_time': 3600, 'buildings': ['tree'], 'unlock_level': 5}, # 1시간 - 주문용 조정
+                'OliveTree': {'sell_price': 22, 'production_time': 4800, 'buildings': ['tree'], 'unlock_level': 5}, # 1시간 20분 - 주문용 조정
+                
+                # 베리 부쉬들 (MID 레이어)
+                'BlackberryBush': {'sell_price': 10, 'production_time': 16200, 'buildings': ['bush'], 'unlock_level': 20}, # 4.5시간
+                'RaspberryBush': {'sell_price': 14, 'production_time': 19800, 'buildings': ['bush'], 'unlock_level': 25} # 5.5시간
             }
             hayday_items.update(real_hayday_items)
         
