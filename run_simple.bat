@@ -2,6 +2,15 @@
 chcp 65001 > nul
 setlocal enabledelayedexpansion
 
+echo.
+echo ========================================================
+echo      [HayDay Dynamic Balancing Simulator]
+echo           Windows 실행 스크립트 v3.0
+echo ========================================================
+echo.
+echo 스크립트 시작...
+pause
+
 REM 관리자 권한 확인 및 요청
 NET SESSION >nul 2>&1
 if errorlevel 1 (
@@ -18,6 +27,7 @@ if errorlevel 1 (
     
     REM 관리자 권한으로 재실행
     powershell -Command "Start-Process '%~0' -Verb RunAs"
+    pause
     exit /b 0
 )
 
@@ -29,13 +39,20 @@ echo ========================================================
 echo.
 
 REM 프로젝트 루트 디렉토리 확인
+echo 프로젝트 디렉토리 확인 중...
 if not exist "webui\" (
+    echo.
     echo [ERROR] webui 폴더를 찾을 수 없습니다
     echo    현재 디렉토리: %CD%
     echo    프로젝트 루트에서 실행해주세요
+    echo.
+    echo 파일 목록:
+    dir /b
+    echo.
     pause
     exit /b 1
 )
+echo [OK] webui 폴더 발견됨
 
 echo Python 설치 확인...
 
