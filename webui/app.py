@@ -79,11 +79,12 @@ def init_simulator():
         simulator = HayDaySimulator()
         print("Simulator initialization completed")
         
-        # SungDae 시뮬레이터 초기화 (실제 HayDay 아이템 데이터 사용)
-        hayday_items = simulator.get_all_items_data()
-        sungdae_simulator = SungDaeSimulator(hayday_items=hayday_items, player_level=5)  # 레벨 5로 시작
-        print(f"SungDae Simulator initialization completed with {len(hayday_items)} items")
+        # SungDae 시뮬레이터 초기화 (올바른 레벨 데이터로 생성)
+        print("Creating SungDae Simulator with corrected level data...")
+        sungdae_simulator = SungDaeSimulator.create_from_hayday_simulator(simulator, player_level=5)
+        print(f"SungDae Simulator initialization completed with corrected unlock levels")
         print(f"Player level initialized to: {sungdae_simulator.player_level}")
+        print(f"Available items count: {len(sungdae_simulator.resource_states)}")
         
         # 로컬라이제이션 초기화 - 상대 경로 사용 (core_data 디렉토리 사용)
         localization_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "hayday_extracted_data", "core_data")

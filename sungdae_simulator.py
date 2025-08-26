@@ -1282,7 +1282,7 @@ class SungDaeSimulator:
         }
     
     @classmethod
-    def create_from_hayday_simulator(cls, hayday_simulator, player_level: int = 20):
+    def create_from_hayday_simulator(cls, hayday_simulator, player_level: int = 5):
         """HayDay 시뮬레이터에서 SungDae 시뮬레이터 생성"""
         # HayDay 아이템 데이터 변환
         hayday_items = {}
