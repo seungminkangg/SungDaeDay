@@ -26,10 +26,10 @@
                 <!-- 플레이어 레벨 -->
                 <div class="mb-3">
                     <label class="form-label">플레이어 레벨</label>
-                    <input type="range" class="form-range" id="sungdae-player-level" min="1" max="100" value="50">
+                    <input type="range" class="form-range" id="sungdae-player-level" min="1" max="100" value="5">
                     <div class="d-flex justify-content-between">
                         <small>1</small>
-                        <small id="sungdae-level-display">50</small>
+                        <small id="sungdae-level-display">5</small>
                         <small>100</small>
                     </div>
                 </div>
@@ -138,6 +138,40 @@
 
 </div>
 
+<!-- 인벤토리 상태 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-boxes me-2"></i>현재 인벤토리
+                </h5>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-outline-info" onclick="refreshInventory()">
+                        <i class="fas fa-sync me-1"></i>새로고침
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-filter me-1"></i>필터
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="filterInventory('all')">전체 보기</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterInventory('deficit')">부족 아이템만</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterInventory('abundant')">풍부한 아이템만</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="inventory-container">
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p class="mb-0">인벤토리 로딩 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 생성된 주문 표시 -->
 <div class="row">
     <div class="col-12">
@@ -203,12 +237,16 @@
 <script>
 // 성대모드 전용 JavaScript
 let sungdaeOrders = [];
+let currentInventory = [];
+let inventoryFilter = 'all';
 
 // 초기화
 document.addEventListener('DOMContentLoaded', function() {
     // 레벨 슬라이더 이벤트
     document.getElementById('sungdae-player-level').addEventListener('input', function() {
         document.getElementById('sungdae-level-display').textContent = this.value;
+        // 레벨 변경 시 인벤토리도 업데이트 (레벨에 따라 아이템 변경 가능)
+        refreshInventory();
     });
 
     // 스트러글 스코어 슬라이더 이벤트
@@ -229,6 +267,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 초기 시스템 상태 로드
     refreshSystemStatus();
+    
+    // 초기 인벤토리 로드
+    refreshInventory();
 });
 
 // 단일 주문 생성
@@ -299,6 +340,10 @@ function addOrderToDisplay(order) {
     // 최신 주문을 앞에 추가 (unshift 사용)
     sungdaeOrders.unshift(order);
     renderOrders();
+    
+    // 인벤토리 업데이트 (주문 생성 시 재고 소모 시뮬레이션)
+    refreshInventory();
+    
     // 다이나믹 밸런싱 데이터도 업데이트
     if (order.dynamic_balancing_data) {
         updateDynamicBalancingDisplay(order.dynamic_balancing_data);
@@ -337,16 +382,41 @@ function renderOrders() {
 
         // Township 기차 메타데이터 표시
         let townshipInfo = '';
-        if (order.generation_metadata && order.generation_metadata.township_train_cars) {
-            const carInfo = order.generation_metadata.car_distribution;
-            townshipInfo = `
-                <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
-                    <small class="text-info">
-                        <i class="fas fa-train me-1"></i>Township 기차: ${order.generation_metadata.township_train_cars}칸, 
-                        효율: ${carInfo ? carInfo.car_efficiency.toFixed(1) : 'N/A'}
-                    </small>
-                </div>
-            `;
+        if (order.delivery_type === 'Train' && order.generation_metadata) {
+            const metadata = order.generation_metadata;
+            let trainDetails = [];
+            
+            // 기차칸 정보
+            if (metadata.township_train_cars) {
+                trainDetails.push(`${metadata.township_train_cars}칸`);
+            }
+            
+            // 칸 분배 정보
+            if (metadata.car_distribution) {
+                const carDist = metadata.car_distribution;
+                if (carDist.estimated_cars_needed) {
+                    trainDetails.push(`예상 ${carDist.estimated_cars_needed}칸 사용`);
+                }
+                if (carDist.car_efficiency) {
+                    trainDetails.push(`효율 ${carDist.car_efficiency.toFixed(1)}`);
+                }
+            }
+            
+            // 아이템별 칸 정보 (실제 Township 스타일)
+            const itemDetails = Object.entries(order.items).map(([item, qty], index) => 
+                `${index + 1}칸: ${item} ${qty}개`
+            ).join(', ');
+            
+            if (trainDetails.length > 0 || itemDetails) {
+                townshipInfo = `
+                    <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                        <small class="text-info">
+                            <i class="fas fa-train me-1"></i>Township 기차: ${trainDetails.join(', ')}
+                            ${itemDetails ? `<br><span class="ms-3">${itemDetails}</span>` : ''}
+                        </small>
+                    </div>
+                `;
+            }
         }
 
         return `
@@ -370,7 +440,7 @@ function renderOrders() {
                             <i class="fas fa-chart-line me-1"></i>스트러글: ${order.struggle_score.toFixed(1)}
                         </div>
                         <div class="col-md-4">
-                            <i class="fas fa-clock me-1"></i>만료: ${order.expiry_time || 60}분
+                            <i class="fas fa-clock me-1"></i>총 생산시간: ${Math.ceil((order.total_production_time || 0) / 60)}분
                         </div>
                     </div>
                     ${townshipInfo}
@@ -538,6 +608,125 @@ function resetSimulator() {
     if (confirm('시뮬레이터를 리셋하시겠습니까?')) {
         location.reload();
     }
+}
+
+// 인벤토리 새로고침
+function refreshInventory() {
+    fetch('/api/sungdae/available-items')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentInventory = data.items;
+            renderInventory();
+        } else {
+            console.error('인벤토리 조회 실패:', data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// 인벤토리 렌더링
+function renderInventory() {
+    const container = document.getElementById('inventory-container');
+    
+    if (!currentInventory || currentInventory.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-box-open fa-2x mb-2"></i>
+                <p>인벤토리 데이터가 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 필터링 적용
+    let filteredInventory = currentInventory;
+    if (inventoryFilter === 'deficit') {
+        filteredInventory = currentInventory.filter(item => item.is_deficit);
+    } else if (inventoryFilter === 'abundant') {
+        filteredInventory = currentInventory.filter(item => item.stock_ratio > 0.8);
+    }
+    
+    // 레이어별로 그룹핑
+    const groupedByLayer = {
+        'CROPS': filteredInventory.filter(item => item.layer === 'CROPS'),
+        'MID': filteredInventory.filter(item => item.layer === 'MID'),
+        'TOP': filteredInventory.filter(item => item.layer === 'TOP')
+    };
+    
+    let inventoryHtml = '';
+    
+    Object.entries(groupedByLayer).forEach(([layer, items]) => {
+        if (items.length === 0) return;
+        
+        const layerNames = {
+            'CROPS': '🌾 기본 작물/동물',
+            'MID': '⚙️ 중급 가공품',
+            'TOP': '💎 고급 제품'
+        };
+        
+        inventoryHtml += `
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">${layerNames[layer]} (${items.length}개)</h6>
+                <div class="row g-2">
+        `;
+        
+        items.slice(0, 20).forEach(item => { // 최대 20개까지만 표시
+            const stockPercentage = Math.min(100, item.stock_ratio * 100);
+            const stockColor = item.is_deficit ? 'danger' : stockPercentage > 80 ? 'success' : stockPercentage > 40 ? 'warning' : 'danger';
+            const stockIcon = item.is_deficit ? 'fa-exclamation-triangle' : stockPercentage > 80 ? 'fa-check-circle' : 'fa-clock';
+            
+            inventoryHtml += `
+                <div class="col-md-3 col-sm-4 col-6">
+                    <div class="card border-${stockColor === 'danger' ? 'danger' : 'light'} h-100">
+                        <div class="card-body p-2">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <small class="fw-bold text-truncate" style="font-size: 0.75rem">${item.name}</small>
+                                <i class="fas ${stockIcon} text-${stockColor}" style="font-size: 0.7rem"></i>
+                            </div>
+                            <div class="progress mb-1" style="height: 4px;">
+                                <div class="progress-bar bg-${stockColor}" style="width: ${stockPercentage}%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.65rem;">
+                                <span class="text-muted">${item.current_stock}/${item.max_capacity}</span>
+                                <span class="text-${stockColor}">${stockPercentage.toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (items.length > 20) {
+            inventoryHtml += `
+                <div class="col-12">
+                    <small class="text-muted">...그 외 ${items.length - 20}개 아이템</small>
+                </div>
+            `;
+        }
+        
+        inventoryHtml += `
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = inventoryHtml;
+}
+
+// 인벤토리 필터링
+function filterInventory(filter) {
+    inventoryFilter = filter;
+    renderInventory();
+    
+    // 버튼 텍스트 업데이트
+    const filterNames = {
+        'all': '전체 보기',
+        'deficit': '부족 아이템만',
+        'abundant': '풍부한 아이템만'
+    };
+    
+    // 드롭다운 버튼 텍스트 업데이트는 생략 (복잡함)
 }
 </script>
 {% endblock %}

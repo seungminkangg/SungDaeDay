@@ -827,17 +827,20 @@ def sungdae_available_items():
     try:
         items = []
         for item_name, resource in sungdae_simulator.resource_states.items():
-            items.append({
-                "name": item_name,
-                "layer": resource.layer.value,
-                "current_stock": resource.current_stock,
-                "max_capacity": resource.max_capacity,
-                "stock_ratio": resource.stock_ratio,
-                "is_deficit": resource.is_deficit,
-                "production_time": resource.production_time,
-                "shelf_available": resource.shelf_available,
-                "market_available": resource.market_available
-            })
+            # 플레이어 레벨에서 언락된 아이템만 표시
+            if sungdae_simulator._is_unlocked_item(item_name):
+                items.append({
+                    "name": item_name,
+                    "layer": resource.layer.value,
+                    "current_stock": resource.current_stock,
+                    "max_capacity": resource.max_capacity,
+                    "stock_ratio": resource.stock_ratio,
+                    "is_deficit": resource.is_deficit,
+                    "production_time": resource.production_time,
+                    "shelf_available": resource.shelf_available,
+                    "market_available": resource.market_available,
+                    "unlock_level": sungdae_simulator.hayday_items.get(item_name, {}).get('unlock_level', 1)
+                })
         
         return jsonify({
             "success": True,

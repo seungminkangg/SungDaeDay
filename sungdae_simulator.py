@@ -103,7 +103,7 @@ class SungDaeSimulator:
     RabbitHole 다이나믹 밸런싱 시스템의 완전한 구현
     """
     
-    def __init__(self, hayday_items: Dict, player_level: int = 20):
+    def __init__(self, hayday_items: Dict, player_level: int = 5):
         self.hayday_items = hayday_items
         self.player_level = player_level
         
@@ -174,6 +174,15 @@ class SungDaeSimulator:
         layer_classification = self._classify_items_by_layer()
         
         for item_name, item_data in self.hayday_items.items():
+            # 유효하지 않은 아이템은 건너뛰기
+            if not self._is_valid_item(item_name):
+                continue
+            
+            # 플레이어 레벨보다 높은 언락 레벨의 아이템은 건너뛰기
+            unlock_level = item_data.get('unlock_level', 1)
+            if unlock_level > self.player_level:
+                continue
+                
             layer = layer_classification.get(item_name, ItemLayer.CROPS)
             
             # 초기 재고량은 레이어에 따라 다르게 설정
@@ -439,7 +448,7 @@ class SungDaeSimulator:
         # 각 레이어별로 아이템 선정
         for layer, count in layer_counts.items():
             layer_items = [item for item, resource in self.resource_states.items() 
-                          if resource.layer == layer]
+                          if resource.layer == layer and self._is_valid_item(item) and self._is_unlocked_item(item)]
             
             if not layer_items:
                 continue
@@ -457,26 +466,30 @@ class SungDaeSimulator:
         return selected_items
     
     def _calculate_township_train_quantity(self, layer: ItemLayer, train_cars: int) -> int:
-        """Township 기차 수량 알고리즘 (칸 수에 따른 분산 시스템)"""
-        # Township 기차는 칸별로 다른 수량 요구 (3-5칸 * 레이어별 기본값)
+        """Township 기차 수량 알고리즘 (플레이어 레벨 기반, 칸별 분산)"""
+        # 플레이어 레벨에 따른 기본 수량 조정
+        level_multiplier = 1.0 + (self.player_level - 1) * 0.03  # 레벨당 3% 증가 (기차는 트럭보다 높음)
+        level_multiplier = max(1.0, min(level_multiplier, 4.0))  # 1.0-4.0배 제한
+        
+        # Township 기차는 칸별로 다른 수량 요구 (레벨 보정된 기본값)
         base_per_car = {
-            ItemLayer.CROPS: 3,   # 작물: 칸당 3개
-            ItemLayer.MID: 2,     # 중급품: 칸당 2개  
-            ItemLayer.TOP: 1      # 고급품: 칸당 1개
-        }.get(layer, 2)
+            ItemLayer.CROPS: max(2, int(4 * level_multiplier)),   # 작물: 칸당 최소 2개
+            ItemLayer.MID: max(1, int(3 * level_multiplier)),     # 중급품: 칸당 최소 1개  
+            ItemLayer.TOP: max(1, int(2 * level_multiplier))      # 고급품: 칸당 최소 1개
+        }.get(layer, max(1, int(2 * level_multiplier)))
         
-        # 기차칸 수에 따른 분산 시스템 (Township 특허 알고리즘)
-        car_distribution = []
-        total_quantity = base_per_car * train_cars
+        # 기차칸 수에 따른 분산 시스템 - 실제로는 한 아이템이 여러 칸에 걸쳐있음
+        # 예: 옥수수가 1칸에 6개, 2칸에 6개 이런 식
+        cars_for_this_item = random.randint(1, min(3, train_cars))  # 한 아이템이 최대 3칸
         
-        # 칸별로 다른 수량 분배 (앞쪽 칸이 더 많이)
-        for i in range(train_cars):
-            multiplier = 1.5 - (i * 0.2)  # 첫째 칸 1.5배, 둘째 칸 1.3배, ...
-            car_quantity = max(1, int(base_per_car * multiplier))
-            car_distribution.append(car_quantity)
+        total_quantity = 0
+        for i in range(cars_for_this_item):
+            # 칸별로 다른 수량 (Township 실제 패턴)
+            car_quantity = random.randint(base_per_car, base_per_car + 3)
+            total_quantity += car_quantity
         
-        # 총 수량이 칸별 수량의 합
-        return sum(car_distribution)
+        # 최소 1개, 최대 25개 제한 (Township 게임 내 제한)
+        return max(1, min(total_quantity, 25))
     
     def _apply_train_scarcity_algorithm(self, selected_items: Dict[str, int]) -> Dict[str, int]:
         """Township 기차 희소성 알고리즘 (칸별 분산 기반 조정)"""
@@ -718,7 +731,7 @@ class SungDaeSimulator:
         # 각 레이어별로 아이템 선정
         for layer, count in layer_counts.items():
             layer_items = [item for item, resource in self.resource_states.items() 
-                          if resource.layer == layer]
+                          if resource.layer == layer and self._is_valid_item(item) and self._is_unlocked_item(item)]
             
             if not layer_items:
                 continue
@@ -728,10 +741,25 @@ class SungDaeSimulator:
                 layer_items, count, pattern.source_preference, source_tags
             )
             
-            # 수량 결정
+            # 수량 결정 (플레이어 레벨과 아이템 희소성 고려)
             for item in selected_layer_items:
                 base_quantity = self._get_base_quantity_for_layer(layer)
-                selected_items[item] = random.randint(base_quantity, base_quantity * 2)
+                resource = self.resource_states.get(item)
+                
+                # 아이템별 수량 범위 계산
+                min_quantity = base_quantity
+                max_quantity = max(base_quantity + 1, int(base_quantity * 1.8))
+                
+                # 희소 아이템은 더 적게, 풍부한 아이템은 더 많이
+                if resource and resource.is_deficit:
+                    max_quantity = int(max_quantity * 0.7)  # 희소 아이템 30% 감소
+                elif resource and resource.stock_ratio > 0.8:
+                    min_quantity = int(min_quantity * 1.2)  # 풍부한 아이템 20% 증가
+                    max_quantity = int(max_quantity * 1.5)
+                
+                # 최종 수량 결정 (최소 1개)
+                final_quantity = random.randint(max(1, min_quantity), max(1, max_quantity))
+                selected_items[item] = final_quantity
         
         return selected_items
     
@@ -777,14 +805,48 @@ class SungDaeSimulator:
         
         return selected
     
-    def _get_base_quantity_for_layer(self, layer: ItemLayer) -> int:
-        """레이어별 기본 수량"""
-        base_quantities = {
-            ItemLayer.CROPS: 8,
-            ItemLayer.MID: 4,
-            ItemLayer.TOP: 2
+    def _is_valid_item(self, item_name: str) -> bool:
+        """유효한 아이템인지 확인 (EmptyField 등 잘못된 아이템 필터링)"""
+        if not item_name or not isinstance(item_name, str):
+            return False
+        
+        # 잘못된 아이템명 필터링
+        invalid_items = {
+            'EmptyField', 'emptyfield', 'empty', '', 'null', 'None', 
+            'undefined', 'placeholder', 'dummy', 'test'
         }
-        return base_quantities.get(layer, 4)
+        
+        if item_name.lower().strip() in [invalid.lower() for invalid in invalid_items]:
+            return False
+        
+        # 아이템명이 너무 짧거나 특수문자로만 구성된 경우
+        if len(item_name.strip()) < 2:
+            return False
+        
+        # 숫자로만 구성된 경우
+        if item_name.strip().isdigit():
+            return False
+            
+        return True
+    
+    def _is_unlocked_item(self, item_name: str) -> bool:
+        """플레이어 레벨에서 언락된 아이템인지 확인"""
+        item_data = self.hayday_items.get(item_name, {})
+        unlock_level = item_data.get('unlock_level', 1)
+        return unlock_level <= self.player_level
+    
+    def _get_base_quantity_for_layer(self, layer: ItemLayer) -> int:
+        """레이어별 기본 수량 (플레이어 레벨 기반 조정)"""
+        # 플레이어 레벨에 따른 기본 승수 계산
+        level_multiplier = 1.0 + (self.player_level - 1) * 0.02  # 레벨당 2% 증가
+        level_multiplier = max(1.0, min(level_multiplier, 3.0))  # 1.0-3.0배 제한
+        
+        base_quantities = {
+            ItemLayer.CROPS: max(3, int(8 * level_multiplier)),   # 최소 3개
+            ItemLayer.MID: max(2, int(4 * level_multiplier)),     # 최소 2개  
+            ItemLayer.TOP: max(1, int(2 * level_multiplier))      # 최소 1개
+        }
+        return base_quantities.get(layer, max(2, int(4 * level_multiplier)))
     
     def _apply_scarcity_algorithm(self, selected_items: Dict[str, int]) -> Dict[str, int]:
         """8단계: 희소성 알고리즘 적용 (PDF: RH-희소성 알고리즘 구현)"""
@@ -802,8 +864,9 @@ class SungDaeSimulator:
                     # 수량을 현재 재고 + 1로 조정하여 긴장감 조성
                     adjusted_items[item_name] = resource.current_stock + random.randint(1, 2)
                 else:
-                    # 부족분이 클 때는 현실적인 수량으로 조정
-                    adjusted_items[item_name] = max(1, resource.current_stock // 2)
+                    # 부족분이 클 때는 원래 수량의 70-90%로 조정 (최소 2개)
+                    reduction_factor = random.uniform(0.7, 0.9)
+                    adjusted_items[item_name] = max(2, int(quantity * reduction_factor))
             
             # 풍부한 아이템의 경우 수량 증가로 밸런스 조정
             elif resource.stock_ratio > 0.8:
@@ -1795,21 +1858,38 @@ class SungDaeSimulator:
         }
     
     def batch_generate_orders(self, count: int, delivery_types: List[DeliveryType] = None) -> List[DeliveryOrder]:
-        """배치 주문 생성 (테스트 및 분석용)"""
+        """배치 주문 생성 (테스트 및 분석용) - 각 주문마다 희소성/다양성 지수 재계산"""
         if delivery_types is None:
             delivery_types = [DeliveryType.TRUCK, DeliveryType.TRAIN]
         
         orders = []
-        for _ in range(count):
+        for i in range(count):
             delivery_type = random.choice(delivery_types)
             order = self.generate_delivery_order(delivery_type, use_struggle_adjustment=True)
             orders.append(order)
+            
+            # 각 주문 생성 후 리소스 상태 업데이트 (희소성/다양성 지수 변화 반영)
+            self._update_resource_state_after_order(order)
             
             # 시간 경과 시뮬레이션 (랜덤)
             if random.random() < 0.3:
                 self.simulate_time_progression(random.randint(1, 3))
         
         return orders
+    
+    def _update_resource_state_after_order(self, order: DeliveryOrder):
+        """주문 생성 후 리소스 상태 업데이트 (배치 생성시 희소성/다양성 지수 변화 반영)"""
+        for item_name, quantity in order.items.items():
+            if item_name in self.resources:
+                # 재고 감소 시뮬레이션 (실제 완료는 아니지만 시장 압력 반영)
+                resource = self.resources[item_name]
+                reduction = min(quantity, resource.current_stock // 2)  # 실제 재고의 절반까지만 감소
+                resource.current_stock = max(0, resource.current_stock - reduction)
+                
+                # 진열대/마켓 가용성 랜덤 업데이트 (시장 변동성 시뮬레이션)
+                if random.random() < 0.1:  # 10% 확률로 가용성 변경
+                    resource.shelf_available = random.choice([True, False])
+                    resource.market_available = random.choice([True, False])
     
     def calculate_advanced_reward_system(self, order: DeliveryOrder) -> Dict:
         """
